@@ -13,6 +13,7 @@ Working task list for **planning**, **ordering**, and **tracking**. Maintain **K
 [X] Review and organise `migration_pro/` — initial repo-like structure, README, TODO, and run artifacts in place.
 [X] `file_transfer_pro.py` — adaptive probe gate semantics (`bytes_moved`), feeder cap tied to live pool size, chunked copy (`copyfileobj` + `copystat`) + shared partial-byte progress.
 [X] Phase 0 docs — `docs/REFACTOR.md`, `docs/ARCHITECTURE.md`; handbook updates (`CONTEXT`, `AGENTS`, `CLAUDE`, `migration_pro/README`, `.cursor` bootstrap).
+[X] `smart_zip_pro.py` — recommendation + execution utility stabilized: sensitivity presets, dry-run/interactive/execute modes, cheap display checks, deep validation on create/resume, DFS recommendation ordering, and config defaults documented.
 [ ] Shared formatting/paths — superseded by **`os_functions/core/`** per **`docs/REFACTOR.md`** Phase 1–2 (old “utils.py” item folds into that).
 
 ---
@@ -68,7 +69,7 @@ See **`docs/REFACTOR.md`** §5 for full descriptions.
     [X] AGENTS.md / CLAUDE.md / docs/CONTEXT.md scaffolded.
     [X] .gitignore with AGENTS.md, CLAUDE.md, .cursor/, __pycache__, .cache/.
     [ ] Shared `utils.py` — **superseded:** use **`os_functions/core/`** per **`docs/REFACTOR.md`**; remove this line when Phase 2 lands.
-    [ ] README.md with first-run instructions (only when welcomed).
+    [X] README.md with first-run instructions and tool quickstart.
 
 ---
 
