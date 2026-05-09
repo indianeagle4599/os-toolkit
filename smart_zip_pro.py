@@ -31,7 +31,7 @@ def _cfg_get(name, fallback):
 
 
 def human_readable_size(size_bytes):
-    """Future extraction target: os_functions.core.format."""
+    """Future extraction target: os_toolkit.core.format."""
     size = float(size_bytes)
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if size < 1024:
@@ -41,7 +41,7 @@ def human_readable_size(size_bytes):
 
 
 def extended_path(path):
-    """Future extraction target: os_functions.core.paths."""
+    """Future extraction target: os_toolkit.core.paths."""
     if os.name == "nt" and not path.startswith("\\\\?\\"):
         return "\\\\?\\" + os.path.abspath(path)
     return path

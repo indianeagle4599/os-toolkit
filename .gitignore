@@ -3,12 +3,16 @@
 AGENTS.md
 CLAUDE.md
 agent-context-setup-prompt-os.md
+TODO.md
 
 # Agent IDE — project/editor config often varies by machine or contains local paths.
 docs/
 .cursor/
 .claude/
 .codex/
+
+# One-off local asset generation helpers; keep generated assets themselves trackable.
+assets/make_gif.py
 
 # Python
 __pycache__/

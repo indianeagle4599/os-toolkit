@@ -1,8 +1,8 @@
 # Migration Pro
 
-**Roadmap:** This workspace will fold into **`os_functions/analysis/`** with a unified **`analyze`** CLI; see **`docs/REFACTOR.md`** (phases, decisions) and **`docs/ARCHITECTURE.md`** (structural map). Until Phase 3, keep using the commands below.
+**Roadmap:** This workspace will fold into **`os_toolkit/analysis/`** with a unified **`analyze`** CLI. Until Phase 3, keep using the commands below.
 
-Migration Pro is the file migration analysis workspace inside `os-functions`. It is being shaped as a future standalone repo for scanning folders, comparing old and new filesystem states, detecting duplicates/common files, and eventually producing safe migration and cleanup plans.
+Migration Pro is the file migration analysis workspace inside `os-toolkit`. It is being shaped as a future standalone repo for scanning folders, comparing old and new filesystem states, detecting duplicates/common files, and eventually producing safe migration and cleanup plans.
 
 It is not a destructive migration executor yet. Current functionality is analysis-first: scan, extract features, compare profiles, and write auditable artifacts.
 

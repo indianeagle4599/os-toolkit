@@ -1,7 +1,10 @@
-# os-functions (`python os+`)
+<h1>
+  <img src="assets/os-toolkit-logo-blink.gif" alt="" width="39" align="absmiddle" />
+  <samp>OS Toolkit</samp>
+</h1>
 
-`os-functions` is a Python-first OS utility repo for file system operations that need more **control**, **safety**, and **operational clarity** than ad-hoc shell commands.  
-Think **python os+**: a practical layer between raw `os`/`shutil` and a future agent-native ops toolkit.
+`os-toolkit` is a Python-first OS utility repo for file system operations that need more **control**, **safety**, and **operational clarity** than ad-hoc shell commands.
+It is a practical layer between raw `os`/`shutil` and a future agent-native ops toolkit.
 
 ## Current phase
 
@@ -14,7 +17,7 @@ Destructive behavior is never default; dry-run and explicit confirmation pattern
 ## Repository layout
 
 ```text
-os-functions/
+os-toolkit/
   file_transfer_pro.py        # parallel copy utility (resume/verify/adaptive workers)
   disk_analyzer_pro.py        # usage/tree analysis utility
   smart_zip_pro.py            # zip recommendation + optional archive creation
@@ -24,11 +27,6 @@ os-functions/
     compare/
     io/
     migration_runs/
-  docs/
-    CONTEXT.md                # project facts and current scope
-    ARCHITECTURE.md           # short structure map
-    REFACTOR.md               # migration-first refactor plan and phase order
-  TODO.md
 ```
 
 ## What is usable today
@@ -89,7 +87,7 @@ Rule: **CLI arguments always win** over config defaults.
 The repo is moving toward a shared package layout:
 
 ```text
-os_functions/
+os_toolkit/
   core/        # shared paths/format/config/terminal/ui/error helpers
   analysis/    # usage/profile/features/match/runs
   transfer/    # copy/worker/verify/strategies/cli
@@ -102,12 +100,3 @@ Planned order:
 4. Transfer extraction from root script.
 5. Deeper analysis features.
 6. Migration executor (last).
-
-For exact decisions and sequencing, see `docs/REFACTOR.md`.
-
-## Companion docs
-
-- `docs/CONTEXT.md` — product intent, active phase, constraints.
-- `docs/ARCHITECTURE.md` — concise structure map.
-- `docs/REFACTOR.md` — detailed phases, decisions, deferred scope.
-- `AGENTS.md` — collaboration and change doctrine.
