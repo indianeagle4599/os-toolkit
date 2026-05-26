@@ -1,15 +1,8 @@
 """
-similarity.py - Name and path similarity backends.
-
-Features:
-- TF-IDF character and path token similarity
-- Optional RapidFuzz edit similarity
-- Optional sentence-transformer embeddings
+name_similarity — optional backends for folder name similarity.
 """
 
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 def clean_names(names):
@@ -45,6 +38,8 @@ class NameSimilarity:
 
             self.model = SentenceTransformer(model_name)
         elif method == "tfidf":
+            from sklearn.feature_extraction.text import TfidfVectorizer
+
             analyzer = "char_wb" if tokenizer == "char" else self._path_tokenizer
             self.vectorizer = TfidfVectorizer(
                 analyzer=analyzer, ngram_range=ngram_range, max_features=max_features
@@ -53,12 +48,11 @@ class NameSimilarity:
     def compute(self, names1, names2, mask=None):
         if self.method == "rapidfuzz":
             return self._rapidfuzz_matrix(names1, names2, mask)
-        elif self.method == "tfidf":
+        if self.method == "tfidf":
             return self._tfidf_sparse_matrix(names1, names2, mask)
-        elif self.method == "bert":
+        if self.method == "bert":
             return self._bert_matrix(names1, names2, mask)
-        else:
-            raise ValueError("Unsupported method: " + self.method)
+        raise ValueError("Unsupported method: " + self.method)
 
     def _rapidfuzz_matrix(self, names1, names2, mask):
         try:
@@ -79,6 +73,8 @@ class NameSimilarity:
         return sim_matrix.astype(np.float16)
 
     def _tfidf_sparse_matrix(self, names1, names2, mask):
+        from sklearn.metrics.pairwise import cosine_similarity
+
         names1 = clean_names(names1)
         names2 = clean_names(names2)
         all_names = names1 + names2
@@ -99,6 +95,8 @@ class NameSimilarity:
         return sim_dense.astype(np.float16)
 
     def _bert_matrix(self, names1, names2, mask):
+        from sklearn.metrics.pairwise import cosine_similarity
+
         embeddings1 = self.model.encode(
             names1, convert_to_tensor=True, show_progress_bar=True
         )

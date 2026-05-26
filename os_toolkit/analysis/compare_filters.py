@@ -1,17 +1,11 @@
 """
-filters.py - Match filtering helpers.
-
-Features:
-- Top-level grouping for folder match summaries
-- Multiprocessing evaluation for grouped candidates
+compare_filters — top-level grouping for folder match summaries.
 """
 
 from collections import defaultdict
 import multiprocessing
 
-
-def _path_parts(path):
-    return tuple(part for part in str(path).replace("\\", "/").split("/") if part)
+from os_toolkit.core.paths import path_parts
 
 
 def _evaluate_group(args):
@@ -24,12 +18,14 @@ def _evaluate_group(args):
     return (best[0], best[1] if best[2] >= threshold else None)
 
 
-def top_level_only(matches, paths_old, threshold, depth_limit=0, verbose=False, workers=4):
+def top_level_only(
+    matches, paths_old, threshold, depth_limit=0, verbose=False, workers=4
+):
     grouped_by_root = defaultdict(list)
 
     for i, path in enumerate(paths_old):
-        parts = _path_parts(path)
-        key = tuple(parts[:1 + depth_limit])
+        parts = path_parts(path)
+        key = tuple(parts[: 1 + depth_limit])
         grouped_by_root[key].append(i)
 
     grouped_args = [

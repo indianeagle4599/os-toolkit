@@ -14,35 +14,64 @@ The repo is in **migration-first** mode:
 
 Destructive behavior is never default; dry-run and explicit confirmation patterns are preferred.
 
+## Setup
+
+1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (or Anaconda).
+2. From the repo root:
+
+```bash
+conda env create -f environment.yml
+conda activate ostk
+just install dev
+```
+
+3. Install [just](https://github.com/casey/just) (see [Installing just](#installing-just) below) if it is not already on your PATH.
+
+All `just` recipes assume the **`ostk`** conda environment is active (`CONDA_DEFAULT_ENV=ostk`). Use `just install` with optional profiles:
+
+| Profile | Installs |
+|---------|----------|
+| *(none)* | Nothing — runtime is stdlib-only |
+| `dev` | pytest, black |
+| `bench` | requests (corpus fetch) |
+| `ml` | numpy, pandas, scikit-learn, tqdm |
+| `all` | dev + bench + ml |
+
+Continuous integration via GitHub Actions can be added when the repo is pushed publicly. The `just pre-commit` recipe and installable hook source already enforce the same checks locally.
+
 ## Repository layout
 
 ```text
 os-toolkit/
-  file_transfer_pro.py        # parallel copy utility (resume/verify/adaptive workers)
-  disk_analyzer_pro.py        # usage/tree analysis utility
-  smart_zip_pro.py            # zip recommendation + optional archive creation
-  *_config.py                 # optional default values (CLI overrides)
-  migration_pro/              # analysis pipeline package-in-folder (profile/features/match)
-    scan/
-    compare/
-    io/
-    migration_runs/
+  file_transfer_pro.py        # parallel copy (permanent CLI)
+  disk_analyzer_pro.py        # usage tree (permanent CLI)
+  analyze_pro.py              # usage | profile | compare subcommands
+  smart_zip_pro.py            # zip recommendation + optional archives
+  *_config.py                 # optional defaults (CLI overrides)
+  runs/                       # generated analysis artifacts only
+  os_toolkit/                 # shared implementation (not run directly)
+    core/
+    analysis/
+    transfer/
 ```
 
 ## What is usable today
 
 ### 1) `file_transfer_pro.py`
-Parallel file copy with resumable behavior and progress reporting.
+Parallel file copy with resume, dry-run, optional verify, adaptive workers, and progress reporting.
 
 ```bash
 python file_transfer_pro.py --source "<src>" --dest "<dst>"
 ```
 
-### 2) `disk_analyzer_pro.py`
-Directory usage scanner for storage and layout visibility.
+### 2) `disk_analyzer_pro.py` and `analyze_pro.py`
+Directory usage scanner (standalone) and unified analysis CLI.
 
 ```bash
 python disk_analyzer_pro.py --path "<root>"
+python analyze_pro.py usage --path "<root>"
+python analyze_pro.py profile --root "<root>" --run-id myrun
+python analyze_pro.py compare --old runs/myrun/old_features.csv --new runs/myrun/new_features.csv
 ```
 
 ### 3) `smart_zip_pro.py`
@@ -82,21 +111,20 @@ Rule: **CLI arguments always win** over config defaults.
 - Clear operator feedback (progress, counts, explicit warnings).
 - Idempotent/re-runnable behavior where possible (resume/skip-valid flows).
 
-## Refactor direction (planned, not fully landed)
+## Installing just
 
-The repo is moving toward a shared package layout:
+[just](https://github.com/casey/just) is the optional task runner for tests, benchmarks, and root CLIs. Install it once, then run recipes from the repo root (e.g. `just test`, `just check`).
 
-```text
-os_toolkit/
-  core/        # shared paths/format/config/terminal/ui/error helpers
-  analysis/    # usage/profile/features/match/runs
-  transfer/    # copy/worker/verify/strategies/cli
-```
+| Platform | Install |
+|----------|---------|
+| Linux (Debian/Ubuntu) | [packages](https://github.com/casey/just#packages) — e.g. `cargo install just` or distro package where available |
+| macOS | [Homebrew](https://brew.sh/): `brew install just` |
+| Windows | [Scoop](https://scoop.sh/): `scoop install just` — or [Chocolatey](https://chocolatey.org/): `choco install just` |
 
-Planned order:
-1. Package skeleton + shared core.
-2. Root shim dedupe (no behavior change).
-3. Analysis unification under a single analysis entrypoint.
-4. Transfer extraction from root script.
-5. Deeper analysis features.
-6. Migration executor (last).
+Forward CLI flags after `--`, e.g. `just transfer -- --source "<src>" --dest "<dst>"`.
+
+## Architecture
+
+Root `*_pro.py` scripts are the permanent user interface. `os_toolkit/` holds shared implementation only (never `python -m os_toolkit`). Analysis artifacts go under `runs/`.
+
+Remaining roadmap: deepen analysis (duplicates, inter-usage), expand `transfer/`, add new domains (`dedupe`, `security`, `network`) with matching root tools.

@@ -1,26 +1,17 @@
-#!/usr/bin/env python3
-
 """
-profile.py - One-pass nested filesystem profiler.
-
-Features:
-- Build folder-level size, file count, and folder count profiles
-- Export nested JSON profiles for later comparison
+profile — one-pass nested filesystem profiles (JSON).
 """
 
-import os
 import json
-import argparse
+import os
 from typing import Dict
+
+from os_toolkit.analysis.features import flatten_profile, write_features_csv
+from os_toolkit.core.paths import rel_path
 
 
 def blank_profile() -> Dict:
     return {"size": 0, "files": 0, "folders": 0, "profile": {}}
-
-
-def rel_path(root: str, path: str) -> str:
-    rel = os.path.relpath(path, root)
-    return "" if rel == "." else rel
 
 
 def generate_nested_profile(root: str, verbosity: int) -> Dict:
@@ -57,48 +48,43 @@ def generate_nested_profile(root: str, verbosity: int) -> Dict:
         profile_map[key] = profile
         if verbosity >= 2:
             print(
-                f"[✓] {key or '.'} → size={profile['size']} | "
+                f"[OK] {key or '.'} -> size={profile['size']} | "
                 f"files={profile['files']} | folders={profile['folders']}"
             )
 
     if verbosity >= 1:
-        print(f"\n📁 Total folders scanned: {len(profile_map)}")
+        print(f"\nTotal folders scanned: {len(profile_map)}")
 
     return {"": profile_map.get("", blank_profile())}
 
 
-def main():
-    parser = argparse.ArgumentParser(description="One-pass nested filesystem profiler")
-    parser.add_argument("root", help="Root directory to scan")
-    parser.add_argument(
-        "-o", "--output", default="profile_nested.json", help="Output JSON file"
-    )
-    parser.add_argument(
-        "-v",
-        "--verbosity",
-        type=int,
-        choices=[0, 1, 2],
-        default=1,
-        help="Verbosity level",
-    )
-
-    args = parser.parse_args()
-    root = os.path.abspath(args.root)
-
-    if not os.path.isdir(root):
-        raise NotADirectoryError(f"❌ {root} is not a valid directory")
-
-    if args.verbosity >= 1:
-        print(f"🔍 Scanning: {root}...")
-
-    profile = generate_nested_profile(root, args.verbosity)
-
-    with open(args.output, "w") as f:
+def write_profile_json(profile: Dict, output_path: str) -> str:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(profile, f, indent=2)
-
-    if args.verbosity >= 1:
-        print(f"\n✅ Nested profile saved to {args.output}")
+    return output_path
 
 
-if __name__ == "__main__":
-    main()
+def run_profile_to_dir(
+    root: str, run_path: str, prefix: str = "", verbosity: int = 1
+) -> tuple:
+    """Scan root, write profile JSON and features CSV under run_path."""
+    root = os.path.abspath(root)
+    if not os.path.isdir(root):
+        raise NotADirectoryError(f"{root} is not a valid directory")
+
+    if verbosity >= 1:
+        print(f"Scanning: {root}...")
+
+    profile = generate_nested_profile(root, verbosity)
+    profile_path = os.path.join(run_path, f"{prefix}profile.json")
+    write_profile_json(profile, profile_path)
+
+    rows = flatten_profile(profile.get("", {}))
+    features_path = os.path.join(run_path, f"{prefix}features.csv")
+    write_features_csv(rows, features_path)
+
+    if verbosity >= 1:
+        print(f"Profile: {profile_path}")
+        print(f"Features: {features_path}")
+
+    return profile_path, features_path

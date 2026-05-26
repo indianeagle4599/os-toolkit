@@ -1,11 +1,11 @@
-# Agent/human collaboration doctrine and agent-specific entry points.
+﻿# Agent/human collaboration doctrine and agent-specific entry points.
 # Drop these lines to version-track them across clones/checkouts.
 AGENTS.md
 CLAUDE.md
 agent-context-setup-prompt-os.md
 TODO.md
 
-# Agent IDE — project/editor config often varies by machine or contains local paths.
+# Agent IDE â€” project/editor config often varies by machine or contains local paths.
 docs/
 .cursor/
 .claude/
@@ -26,8 +26,18 @@ build/
 .venv/
 venv/
 
-# Script caches (e.g. migration_pro/.cache/)
+# Script caches
 .cache/
+
+# Local analysis run artifacts (never commit)
+runs/
+
+
+# pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
 
 # OS
 .DS_Store
