@@ -11,7 +11,7 @@ It is a practical layer between raw `os`/`shutil` and a future agent-native ops 
 **Requirements:** Python 3.10+ on your PATH. No install step is required for the four root CLIs — they use the stdlib only.
 
 ```bash
-git clone <your-repo-url> os-toolkit
+git clone https://github.com/indianeagle4599/os-toolkit.git
 cd os-toolkit
 python file_transfer_pro.py --help
 python disk_analyzer_pro.py --help
