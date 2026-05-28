@@ -6,6 +6,32 @@
 `os-toolkit` is a Python-first OS utility repo for file system operations that need more **control**, **safety**, and **operational clarity** than ad-hoc shell commands.
 It is a practical layer between raw `os`/`shutil` and a future agent-native ops toolkit.
 
+## Setup
+
+**Requirements:** Python 3.10+ on your PATH. No install step is required for the four root CLIs — they use the stdlib only.
+
+```bash
+git clone <your-repo-url> os-toolkit
+cd os-toolkit
+python file_transfer_pro.py --help
+python disk_analyzer_pro.py --help
+python smart_zip_pro.py --help
+python analyze_pro.py --help
+```
+
+Run any tool the same way: `python <script>.py` plus its flags (see `--help` on each).
+
+| Tool | Role |
+|------|------|
+| `file_transfer_pro.py` | Parallel copy (resume, dry-run, strategies) |
+| `disk_analyzer_pro.py` | Directory usage tree |
+| `smart_zip_pro.py` | Zip recommendations / optional archives |
+| `analyze_pro.py` | `usage`, `profile`, or `compare` subcommands |
+
+**Optional — `analyze_pro compare` only:** needs `numpy`, `pandas`, `scikit-learn`, and `tqdm` (`pip install numpy pandas scikit-learn tqdm`). `usage`, `profile`, and the other three CLIs do not need them.
+
+**Tests (optional):** from the repo root, `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (expects 20 passed, 1 deselected).
+
 ## Current phase
 
 The repo is in **migration-first** mode:
@@ -13,31 +39,6 @@ The repo is in **migration-first** mode:
 - **Transfer pillar**: copy and package data safely with resume/validation behavior.
 
 Destructive behavior is never default; dry-run and explicit confirmation patterns are preferred.
-
-## Setup
-
-1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (or Anaconda).
-2. From the repo root:
-
-```bash
-conda env create -f environment.yml
-conda activate ostk
-just install dev
-```
-
-3. Install [just](https://github.com/casey/just) (see [Installing just](#installing-just) below) if it is not already on your PATH.
-
-All `just` recipes assume the **`ostk`** conda environment is active (`CONDA_DEFAULT_ENV=ostk`). Use `just install` with optional profiles:
-
-| Profile | Installs |
-|---------|----------|
-| *(none)* | Nothing — runtime is stdlib-only |
-| `dev` | pytest, black |
-| `bench` | requests (corpus fetch) |
-| `ml` | numpy, pandas, scikit-learn, tqdm |
-| `all` | dev + bench + ml |
-
-Continuous integration via GitHub Actions can be added when the repo is pushed publicly. The `just pre-commit` recipe and installable hook source already enforce the same checks locally.
 
 ## Repository layout
 
@@ -110,18 +111,6 @@ Rule: **CLI arguments always win** over config defaults.
 - No destructive defaults.
 - Clear operator feedback (progress, counts, explicit warnings).
 - Idempotent/re-runnable behavior where possible (resume/skip-valid flows).
-
-## Installing just
-
-[just](https://github.com/casey/just) is the optional task runner for tests, benchmarks, and root CLIs. Install it once, then run recipes from the repo root (e.g. `just test`, `just check`).
-
-| Platform | Install |
-|----------|---------|
-| Linux (Debian/Ubuntu) | [packages](https://github.com/casey/just#packages) — e.g. `cargo install just` or distro package where available |
-| macOS | [Homebrew](https://brew.sh/): `brew install just` |
-| Windows | [Scoop](https://scoop.sh/): `scoop install just` — or [Chocolatey](https://chocolatey.org/): `choco install just` |
-
-Forward CLI flags after `--`, e.g. `just transfer -- --source "<src>" --dest "<dst>"`.
 
 ## Architecture
 
