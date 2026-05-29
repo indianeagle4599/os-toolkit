@@ -30,7 +30,7 @@ python analyze_pro.py --help
 
 **Optional — developer shortcuts:** with [just](https://github.com/casey/just) installed, `just list` shows recipes such as `just test`, `just transfer --help`, `just analyze usage --help`.
 
-**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (24 passed, 1 deselected at last check). Or `just test`.
+**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (25 passed, 1 deselected at last check). Or `just test`.
 
 **Behavior guarantees and limits:** see [`specs/README.md`](specs/README.md) (maps each tool to its spec file).
 
