@@ -5,6 +5,7 @@ resume/dry-run, optional config defaults, and adaptive worker tuning.
 
 import argparse
 import multiprocessing
+import sys
 
 from os_toolkit.core.config import cfg_get
 from os_toolkit.transfer.copy import parallel_copy
@@ -16,7 +17,10 @@ except ImportError:
 
 
 def main():
-    print("Superfast File Transfer Pro | Pre-scan | Strategy | Live Progress | Resume")
+    if "-h" not in sys.argv and "--help" not in sys.argv:
+        print(
+            "Superfast File Transfer Pro | Pre-scan | Strategy | Live Progress | Resume"
+        )
 
     workers_default = cfg_get(_cfg, "WORKERS", multiprocessing.cpu_count() // 2)
 
@@ -77,7 +81,7 @@ def main():
     if not args.dest:
         parser.error("--dest is required (or set DEST in file_transfer_config.py)")
 
-    parallel_copy(
+    if not parallel_copy(
         source_dir=args.source,
         destination_dir=args.dest,
         workers=args.workers,
@@ -85,7 +89,8 @@ def main():
         dry_run=args.dry_run,
         strategy=args.strategy,
         adaptive=args.adaptive,
-    )
+    ):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

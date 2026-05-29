@@ -24,11 +24,6 @@ def run_dir(run_id: str) -> str:
     return str(path)
 
 
-def new_run_id(prefix: str = "run") -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"{prefix}_{stamp}"
-
-
 def run_dir_for_paths(path1, path2, fallback: str = "manual") -> str:
     runs_root = ensure_runs_root().resolve()
     candidates = []
@@ -55,9 +50,26 @@ def cache_dir_for(run_path: str) -> str:
     return str(path)
 
 
-def write_manifest(run_path: str, data: dict) -> str:
+_MERGE_DICT_KEYS = frozenset({"inputs", "outputs", "settings", "counts"})
+
+
+def merge_manifest(existing: dict, update: dict) -> dict:
+    """Shallow-merge top-level keys; deep-merge known nested dict fields."""
+    merged = dict(existing)
+    for key, value in update.items():
+        if key in _MERGE_DICT_KEYS and isinstance(value, dict):
+            nested = dict(merged.get(key) or {})
+            nested.update(value)
+            merged[key] = nested
+        else:
+            merged[key] = value
+    return merged
+
+
+def write_manifest(run_path: str, data: dict, *, merge: bool = False) -> str:
     path = Path(run_path) / "manifest.json"
-    payload = {"updated_at_utc": datetime.now(timezone.utc).isoformat(), **data}
+    payload = merge_manifest(read_manifest(run_path), data) if merge else data
+    payload = {"updated_at_utc": datetime.now(timezone.utc).isoformat(), **payload}
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
         f.write("\n")
@@ -115,29 +127,25 @@ def ensure_profile(
         return features_path
 
     run_profile_to_dir(root, run_path, prefix=prefix, verbosity=verbosity)
-    manifest = read_manifest(run_path)
-    inputs = dict(manifest.get("inputs") or {})
-    outputs = dict(manifest.get("outputs") or {})
     key_root, key_mtime = _profile_side_keys(prefix)
-    inputs[key_root] = root
-    inputs[key_mtime] = root_mtime(root)
-    outputs[f"{prefix}profile"] = os.path.join(run_path, f"{prefix}profile.json")
-    outputs[f"{prefix}features"] = features_path
+    features_path = os.path.join(run_path, f"{prefix}features.csv")
     write_manifest(
         run_path,
         {
-            "command": "analyze.compare",
-            "inputs": inputs,
-            "outputs": outputs,
+            "command": "analyze.profile",
+            "inputs": {key_root: root, key_mtime: root_mtime(root)},
+            "outputs": {
+                f"{prefix}profile": os.path.join(run_path, f"{prefix}profile.json"),
+                f"{prefix}features": features_path,
+            },
         },
+        merge=True,
     )
     return features_path
 
 
 def compare_run_id(old_root: str, new_root: str) -> str:
-    pair = f"{os.path.abspath(old_root)}\0{os.path.abspath(new_root)}".encode(
-        "utf-8"
-    )
+    pair = f"{os.path.abspath(old_root)}\0{os.path.abspath(new_root)}".encode("utf-8")
     return "compare_" + hashlib.sha256(pair).hexdigest()[:12]
 
 

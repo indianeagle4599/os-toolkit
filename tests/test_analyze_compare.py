@@ -65,7 +65,7 @@ def test_compare_writes_matches(tmp_path, runs_root, capsys):
         structure_filter=0.0,
         name_sim="tfidf",
         tfidf_ngrams="3-5",
-        tokenizer="word",
+        tokenizer="char",
         depth_limit=10,
         workers=1,
         color=False,

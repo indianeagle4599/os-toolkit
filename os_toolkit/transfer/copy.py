@@ -11,7 +11,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from os_toolkit.core.format import format_eta, human_readable_size
-from os_toolkit.core.paths import extended_path
+from os_toolkit.core.paths import extended_path, is_under
 from os_toolkit.transfer.strategies import (
     IN_FLIGHT_MULT,
     apply_strategy,
@@ -85,10 +85,25 @@ def parallel_copy(
     dry_run: bool = False,
     strategy: str = "balanced",
     adaptive: bool = False,
-):
+) -> bool:
+    """Copy source to destination. Returns False on validation failure."""
     if not os.path.exists(source_dir):
         print(f"ERROR: Source directory does not exist: {source_dir}")
-        return
+        return False
+
+    if not os.path.isdir(source_dir):
+        print(f"ERROR: Source is not a directory: {source_dir}")
+        return False
+
+    source_abs = os.path.abspath(source_dir)
+    dest_abs = os.path.abspath(destination_dir)
+    if is_under(dest_abs, source_abs):
+        print(
+            f"ERROR: Destination cannot be inside source:\n"
+            f"  source: {source_dir}\n"
+            f"  dest:   {destination_dir}"
+        )
+        return False
 
     if verbosity >= 1:
         print(f"\nScanning {source_dir} ...")
@@ -97,7 +112,7 @@ def parallel_copy(
     total_files = len(files)
     if total_files == 0:
         print(f"WARNING: No files found in {source_dir}")
-        return
+        return False
 
     total_bytes = sum(f[2] for f in files)
     probe_seq = probe_sequence(workers)
@@ -289,7 +304,7 @@ def parallel_copy(
 
     if cancelled:
         print("Transfer cancelled.")
-        return
+        return False
 
     duration = time.time() - start_time
     avg_speed = (
@@ -311,3 +326,4 @@ def parallel_copy(
         print(f"    {'Skipped':<12}: {skipped:>6,} files  (already up to date)")
         print(f"    {'Failed':<12}: {failed:>6,} files")
         print(f"    {'Avg speed':<12}: {avg_speed}")
+    return True

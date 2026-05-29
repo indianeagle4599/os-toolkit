@@ -2,6 +2,9 @@
 
 import json
 import os
+from types import SimpleNamespace
+
+import pytest
 
 from os_toolkit.analysis.profile import run_profile_to_dir
 from os_toolkit.analysis.runs import write_manifest
@@ -38,6 +41,40 @@ def test_manifest_records_outputs(usage_tree, runs_root):
     assert manifest.is_file()
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     assert payload["command"] == "analyze.compare"
+
+
+def test_compare_preserves_profile_cache(usage_tree, runs_root):
+    """Guarantee: compare manifest merge keeps profile cache keys for re-run."""
+    pytest.importorskip("numpy")
+    pytest.importorskip("pandas")
+    pytest.importorskip("tqdm")
+    from os_toolkit.analysis.compare import run_compare, settings_from_namespace
+    from os_toolkit.analysis.runs import ensure_profile, profile_is_current
+
+    run_path = str(runs_root / "cmp_cache")
+    root = str(usage_tree)
+    old_csv = ensure_profile(root, run_path, prefix="old_", verbosity=0)
+    new_csv = ensure_profile(root, run_path, prefix="new_", verbosity=0)
+    settings = settings_from_namespace(
+        SimpleNamespace(
+            old=old_csv,
+            new=new_csv,
+            run_id="cmp_cache",
+            threshold=0.0,
+            topk=1,
+            batch_size=1000,
+            structure_filter=0.0,
+            name_sim="tfidf",
+            tfidf_ngrams="3-5",
+            tokenizer="char",
+            depth_limit=0,
+            workers=1,
+            color=False,
+        )
+    )
+    run_compare(settings)
+    assert profile_is_current(run_path, root, "old_")
+    assert profile_is_current(run_path, root, "new_")
 
 
 def test_ensure_profile_reuses_cache(usage_tree, runs_root):

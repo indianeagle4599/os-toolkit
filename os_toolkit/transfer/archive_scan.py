@@ -13,11 +13,6 @@ from os_toolkit.core.config import cfg_get
 from os_toolkit.core.format import human_readable_size
 from os_toolkit.core.paths import extended_path, path_parts, rel_path
 
-
-def _size_label(size_bytes) -> str:
-    return human_readable_size(size_bytes, extended_units=True)
-
-
 SENSITIVITY_PRESETS = {
     "low": {
         "min_files": 1000,
@@ -119,12 +114,24 @@ def _resolve_threshold(cfg_name, preset_key, preset, config_module):
     return raw if raw is not None else preset[preset_key]
 
 
+def default_zip_output(root: str) -> str:
+    """Sibling output directory outside the scan root when --output is omitted."""
+    root_abs = os.path.abspath(root)
+    base_name = os.path.basename(root_abs.rstrip(os.sep)) or "archive"
+    parent = os.path.dirname(root_abs) or root_abs
+    return os.path.join(parent, f"{base_name}_zips")
+
+
 def settings(args, config_module=None):
     preset_name = args.sensitivity
     preset = SENSITIVITY_PRESETS[preset_name]
+    root_abs = os.path.abspath(args.root)
+    output = (
+        os.path.abspath(args.output) if args.output else default_zip_output(root_abs)
+    )
     return {
-        "root": os.path.abspath(args.root),
-        "output": os.path.abspath(args.output) if args.output else "",
+        "root": root_abs,
+        "output": output,
         "interactive": args.interactive,
         "execute": args.execute,
         "overwrite": args.overwrite,
@@ -288,7 +295,7 @@ def scan_root(cfg):
     if cfg["verbosity"]:
         print(
             f"Scanned {len(found):,} folders, {root_stat.files:,} files "
-            f"({_size_label(root_stat.bytes)})"
+            f"({human_readable_size(root_stat.bytes, extended_units=True)})"
         )
     return found
 
@@ -343,7 +350,7 @@ def broad_parent(stat, stats, logical):
 
 def planned_zip_path(path, root, output):
     if not output:
-        return f"{path.rstrip(os.sep)}.zip"
+        output = default_zip_output(root)
     label = rel_path(root, path) or base(root) or "root"
     safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in label)
     safe = safe.replace("/", "__").replace("\\", "__").strip("._")[:140] or "folder"
@@ -445,7 +452,9 @@ def score(stat, stats, cfg):
         warnings.append("many files already compressed")
     if stat.bytes > cfg["max_zip_bytes"]:
         s -= 50
-        warnings.append(f"over max zip size ({_size_label(cfg['max_zip_bytes'])})")
+        warnings.append(
+            f"over max zip size ({human_readable_size(cfg['max_zip_bytes'], extended_units=True)})"
+        )
 
     s = max(0, min(100, int(s)))
     if s < cfg["min_score"]:
@@ -536,14 +545,21 @@ def _display_order(candidates, stats, root):
 # --- Display ---
 
 
+def zip_non_dir_count(path, *, verify_crc=False):
+    """Count non-directory zip entries; optionally run testzip() CRC check."""
+    with zipfile.ZipFile(path, "r") as archive:
+        count = sum(1 for info in archive.infolist() if not info.is_dir())
+        bad = archive.testzip() if verify_crc else None
+    return count, bad
+
+
 def check_existing_zip(candidate):
     """Cheap existence + file-count check for display (no CRC verification)."""
     path = candidate.zip_path
     if not os.path.exists(path):
         return None
     try:
-        with zipfile.ZipFile(path, "r") as archive:
-            archived = sum(1 for info in archive.infolist() if not info.is_dir())
+        archived, _ = zip_non_dir_count(path, verify_crc=False)
         return {"match": archived == candidate.stat.files, "archived": archived}
     except OSError:
         return {"match": False, "archived": 0}
@@ -556,7 +572,8 @@ def print_candidate(index, total, candidate):
     print(f"    Zip      : {candidate.zip_path}")
     print(
         f"    Score    : {candidate.score}/100 | {stat.files:,} files | "
-        f"{_size_label(stat.bytes)} | avg {_size_label(int(stat.avg))}"
+        f"{human_readable_size(stat.bytes, extended_units=True)} | avg "
+        f"{human_readable_size(int(stat.avg), extended_units=True)}"
     )
     print(
         f"    Mix      : {stat.small_ratio:.0%} small | "
