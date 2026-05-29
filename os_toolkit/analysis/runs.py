@@ -64,6 +64,83 @@ def write_manifest(run_path: str, data: dict) -> str:
     return str(path)
 
 
+def read_manifest(run_path: str) -> dict:
+    path = Path(run_path) / "manifest.json"
+    if not path.is_file():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def root_mtime(root: str) -> float:
+    try:
+        return os.path.getmtime(root)
+    except OSError:
+        return 0.0
+
+
+def _profile_side_keys(prefix: str) -> tuple[str, str]:
+    side = "old" if prefix.startswith("old") else "new"
+    return f"{side}_root", f"{side}_root_mtime"
+
+
+def profile_is_current(run_path: str, root: str, prefix: str) -> bool:
+    """True when features CSV exists and root path/mtime match manifest."""
+    root = os.path.abspath(root)
+    features = os.path.join(run_path, f"{prefix}features.csv")
+    if not os.path.isfile(features):
+        return False
+    inputs = read_manifest(run_path).get("inputs") or {}
+    key_root, key_mtime = _profile_side_keys(prefix)
+    if inputs.get(key_root) != root:
+        return False
+    return inputs.get(key_mtime) == root_mtime(root)
+
+
+def ensure_profile(
+    root: str, run_path: str, prefix: str = "", verbosity: int = 1
+) -> str:
+    """Profile root into run_path when missing or stale; return features CSV path."""
+    from os_toolkit.analysis.profile import run_profile_to_dir
+
+    root = os.path.abspath(root)
+    if not os.path.isdir(root):
+        raise NotADirectoryError(f"{root} is not a valid directory")
+
+    os.makedirs(run_path, exist_ok=True)
+    features_path = os.path.join(run_path, f"{prefix}features.csv")
+    if profile_is_current(run_path, root, prefix):
+        if verbosity >= 1:
+            print(f"Profile cache hit: {features_path}")
+        return features_path
+
+    run_profile_to_dir(root, run_path, prefix=prefix, verbosity=verbosity)
+    manifest = read_manifest(run_path)
+    inputs = dict(manifest.get("inputs") or {})
+    outputs = dict(manifest.get("outputs") or {})
+    key_root, key_mtime = _profile_side_keys(prefix)
+    inputs[key_root] = root
+    inputs[key_mtime] = root_mtime(root)
+    outputs[f"{prefix}profile"] = os.path.join(run_path, f"{prefix}profile.json")
+    outputs[f"{prefix}features"] = features_path
+    write_manifest(
+        run_path,
+        {
+            "command": "analyze.compare",
+            "inputs": inputs,
+            "outputs": outputs,
+        },
+    )
+    return features_path
+
+
+def compare_run_id(old_root: str, new_root: str) -> str:
+    pair = f"{os.path.abspath(old_root)}\0{os.path.abspath(new_root)}".encode(
+        "utf-8"
+    )
+    return "compare_" + hashlib.sha256(pair).hexdigest()[:12]
+
+
 def get_cache_folder(path1: str, path2: str, run_dir_path: Optional[str] = None) -> str:
     def hash_path(path: str) -> str:
         try:

@@ -74,7 +74,7 @@ Status: `shipped` | `in-progress` | `planned` | `speculative`.
 | `file_transfer_pro` | `transfer/` | shipped | Parallel directory copy with resume, strategies, optional adaptive workers | `core.paths`, `core.format`, `core.config`; introduces transfer copy/worker/strategies |
 | `disk_analyzer_pro` | `analysis/` | shipped | Depth-limited usage tree for one root | `core.config`; `analysis.usage` |
 | `smart_zip_pro` | `transfer/` | shipped | Folder-level zip recommendations; optional create | `core.config`, `core.format`, `core.paths`; `transfer.archive_*` |
-| `analyze_pro` | `analysis/` | shipped | Subcommands: `usage`, `profile`, `compare` | `analysis.usage`, `profile`, `compare`, `runs`; compare uses optional ML stack |
+| `analyze_pro` | `analysis/` | shipped | Subcommands: `usage`, `compare` (profiles internally) | `analysis.usage`, `profile`, `compare`, `runs`; compare uses optional ML stack |
 
 ### B. In-progress (current planning / execution round)
 

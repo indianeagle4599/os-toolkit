@@ -29,12 +29,23 @@ def test_manifest_records_outputs(usage_tree, runs_root):
     write_manifest(
         run_path,
         {
-            "command": "analyze.profile",
-            "inputs": {"root": str(usage_tree)},
+            "command": "analyze.compare",
+            "inputs": {"old_root": str(usage_tree)},
             "outputs": {"profile": os.path.join(run_path, "profile.json")},
         },
     )
     manifest = runs_root / "manifest_run" / "manifest.json"
     assert manifest.is_file()
     payload = json.loads(manifest.read_text(encoding="utf-8"))
-    assert payload["command"] == "analyze.profile"
+    assert payload["command"] == "analyze.compare"
+
+
+def test_ensure_profile_reuses_cache(usage_tree, runs_root):
+    """Guarantee: ensure_profile skips rescan when root path and mtime unchanged."""
+    from os_toolkit.analysis.runs import ensure_profile, profile_is_current
+
+    run_path = str(runs_root / "cache_test")
+    root = str(usage_tree)
+    ensure_profile(root, run_path, prefix="old_", verbosity=0)
+    assert profile_is_current(run_path, root, "old_")
+    ensure_profile(root, run_path, prefix="old_", verbosity=0)

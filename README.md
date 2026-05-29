@@ -26,9 +26,9 @@ Run any tool the same way: `python <script>.py` plus its flags (see `--help` on 
 | `file_transfer_pro.py` | Parallel copy (resume, dry-run, strategies) |
 | `disk_analyzer_pro.py` | Directory usage tree |
 | `smart_zip_pro.py` | Zip recommendations / optional archives |
-| `analyze_pro.py` | `usage`, `profile`, or `compare` subcommands |
+| `analyze_pro.py` | `usage`, `compare` subcommands |
 
-**Optional — `analyze_pro compare` only:** needs `numpy`, `pandas`, `scikit-learn`, and `tqdm` (`pip install numpy pandas scikit-learn tqdm`). `usage`, `profile`, and the other three CLIs do not need them.
+**Optional — `analyze_pro compare` only:** needs `numpy`, `pandas`, `scikit-learn`, and `tqdm` (`pip install numpy pandas scikit-learn tqdm`). `usage` and the other three CLIs do not need them.
 
 **Tests (optional):** from the repo root, `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (expects 20 passed, 1 deselected).
 
@@ -46,7 +46,7 @@ Destructive behavior is never default; dry-run and explicit confirmation pattern
 os-toolkit/
   file_transfer_pro.py        # parallel copy (permanent CLI)
   disk_analyzer_pro.py        # usage tree (permanent CLI)
-  analyze_pro.py              # usage | profile | compare subcommands
+  analyze_pro.py              # usage | compare subcommands
   smart_zip_pro.py            # zip recommendation + optional archives
   *_config.py                 # optional defaults (CLI overrides)
   runs/                       # generated analysis artifacts only
@@ -71,8 +71,7 @@ Directory usage scanner (standalone) and unified analysis CLI.
 ```bash
 python disk_analyzer_pro.py --path "<root>"
 python analyze_pro.py usage --path "<root>"
-python analyze_pro.py profile --root "<root>" --run-id myrun
-python analyze_pro.py compare --old runs/myrun/old_features.csv --new runs/myrun/new_features.csv
+python analyze_pro.py compare --old "<dir-a>" --new "<dir-b>"
 ```
 
 ### 3) `smart_zip_pro.py`

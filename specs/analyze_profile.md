@@ -1,29 +1,25 @@
-# Analyze Pro — profile
+# Analyze Pro — profile (internal)
 
 ## What it does
 
-Walks a filesystem root bottom-up and builds a nested profile (sizes, file counts, folder counts per relative path). Writes profile JSON and a flattened features CSV under a run directory beneath `runs/`. Can profile one root or two roots (old and new) in one run for later compare. Writes or updates `manifest.json` describing inputs and output paths.
+Library implementation used by `analyze compare` — not a separate CLI subcommand. Walks a filesystem root bottom-up and builds a nested profile (sizes, file counts, folder counts per relative path). Writes profile JSON and a flattened features CSV under a run directory beneath `runs/`.
 
 ## Inputs
 
-Single-root mode: `--root` and optional `--run-id` (auto-generated UTC timestamp id if omitted).
-
-Dual-root mode: `--old-root` and `--new-root` with optional `--run-id`.
-
-Optional verbosity 0, 1, or 2.
+Called from `os_toolkit.analysis.runs.ensure_profile` with a root path, run directory, optional filename prefix (`old_` / `new_`), and verbosity.
 
 ## Outputs
 
-Console scan messages. Files under `runs/<run_id>/`: `profile.json` and `features.csv`, or `old_*` / `new_*` prefixed pairs plus `manifest.json`. Printed run directory path.
+Console scan messages when verbosity allows. Files under `runs/<run_id>/`: prefixed or unprefixed `profile.json` and `features.csv`. Manifest records root path and mtime for cache reuse.
 
 ## Guarantees
 
-Does not delete or modify source files. Re-running with the same run id overwrites artifacts in that run directory. Walk errors are reported at verbose levels; skipped paths do not abort the whole profile.
+Does not delete or modify source files. Walk errors are reported at verbose levels; skipped paths do not abort the whole profile.
 
 ## Known limits
 
-`runs/` is local and gitignored. No duplicate-file detection inside profile. Profile alone does not run compare; that is a separate subcommand. Large trees produce large JSON.
+`runs/` is local and gitignored. No duplicate-file detection inside profile. Large trees produce large JSON.
 
 ## Adversarial surfaces
 
-Invalid root; empty tree; permission skips; very large JSON; manual run id collision; dual-root mode with only one root provided.
+Invalid root; empty tree; permission skips; very large JSON.

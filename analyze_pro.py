@@ -1,18 +1,20 @@
 """
-Analyze Pro — unified analysis CLI (usage, profile, compare).
+Analyze Pro — unified analysis CLI (usage, compare).
 
 Features:
 - usage: disk usage tree (2x2 Usage)
-- profile: nested profile + features CSV under runs/
-- compare: inter-root profile match using feature CSVs
+- compare: match two directory trees (profiles internally, then compare)
 """
 
 import argparse
 import os
 import sys
 
-from os_toolkit.analysis.profile import run_profile_to_dir
-from os_toolkit.analysis.runs import new_run_id, run_dir, write_manifest
+from os_toolkit.analysis.runs import (
+    compare_run_id,
+    ensure_profile,
+    run_dir,
+)
 from os_toolkit.analysis.usage import run_usage
 
 
@@ -28,68 +30,39 @@ def cmd_usage(args):
         sys.exit(1)
 
 
-def cmd_profile(args):
-    run_path = run_dir(args.run_id)
-
-    if args.old_root and args.new_root:
-        run_profile_to_dir(
-            args.old_root, run_path, prefix="old_", verbosity=args.verbosity
-        )
-        run_profile_to_dir(
-            args.new_root, run_path, prefix="new_", verbosity=args.verbosity
-        )
-        write_manifest(
-            run_path,
-            {
-                "command": "analyze.profile",
-                "inputs": {"old_root": args.old_root, "new_root": args.new_root},
-                "outputs": {
-                    "old_profile": os.path.join(run_path, "old_profile.json"),
-                    "new_profile": os.path.join(run_path, "new_profile.json"),
-                    "old_features": os.path.join(run_path, "old_features.csv"),
-                    "new_features": os.path.join(run_path, "new_features.csv"),
-                },
-            },
-        )
-        print(f"\nRun artifacts: {run_path}")
-        return
-
-    if not args.root:
-        raise SystemExit("profile requires --root or both --old-root and --new-root")
-
-    run_profile_to_dir(args.root, run_path, prefix="", verbosity=args.verbosity)
-    write_manifest(
-        run_path,
-        {
-            "command": "analyze.profile",
-            "inputs": {"root": args.root},
-            "outputs": {
-                "profile": os.path.join(run_path, "profile.json"),
-                "features": os.path.join(run_path, "features.csv"),
-            },
-        },
-    )
-    print(f"\nRun artifacts: {run_path}")
-
-
 def cmd_compare(args):
     from os_toolkit.analysis.compare import run_compare, settings_from_namespace
 
-    if args.run_id and not args.old and not args.new:
-        run_path = run_dir(args.run_id)
-        args.old = args.old or os.path.join(run_path, "old_features.csv")
-        args.new = args.new or os.path.join(run_path, "new_features.csv")
-
     if not args.old or not args.new:
-        raise SystemExit("compare requires --old and --new feature CSV paths")
+        raise SystemExit("compare requires --old and --new directory roots")
 
-    args.run_id = args.run_id or "manual"
+    old_root = os.path.abspath(args.old)
+    new_root = os.path.abspath(args.new)
+    if not os.path.isdir(old_root):
+        raise SystemExit(f"--old is not a directory: {old_root}")
+    if not os.path.isdir(new_root):
+        raise SystemExit(f"--new is not a directory: {new_root}")
+
+    run_id = args.run_id or compare_run_id(old_root, new_root)
+    run_path = run_dir(run_id)
+
+    args.old = ensure_profile(
+        old_root, run_path, prefix="old_", verbosity=args.verbosity
+    )
+    args.new = ensure_profile(
+        new_root, run_path, prefix="new_", verbosity=args.verbosity
+    )
+    args.run_id = run_id
+
+    if args.verbosity >= 1:
+        print(f"\nRun artifacts: {run_path}")
+
     run_compare(settings_from_namespace(args))
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Analyze Pro — usage, profile, and compare subcommands"
+        description="Analyze Pro — usage and compare subcommands"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -101,22 +74,17 @@ def build_parser():
     usage.add_argument("-s", "--shallow-scan", action="store_true")
     usage.set_defaults(func=cmd_usage)
 
-    profile = sub.add_parser("profile", help="Nested profile + features under runs/")
-    profile.add_argument("--root", help="Single root to profile")
-    profile.add_argument("--old-root", help="Old root (pair with --new-root)")
-    profile.add_argument("--new-root", help="New root (pair with --old-root)")
-    profile.add_argument(
+    compare = sub.add_parser(
+        "compare", help="Match two directory trees (profiles cached under runs/)"
+    )
+    compare.add_argument("--old", required=True, help="Old root directory")
+    compare.add_argument("--new", required=True, help="New root directory")
+    compare.add_argument(
         "--run-id",
         default=None,
-        help="Run folder under runs/ (default: new timestamp id)",
+        help="Run folder under runs/ (default: stable id from both roots)",
     )
-    profile.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=1)
-    profile.set_defaults(func=cmd_profile)
-
-    compare = sub.add_parser("compare", help="Match old/new feature CSVs")
-    compare.add_argument("--old", help="Old features CSV")
-    compare.add_argument("--new", help="New features CSV")
-    compare.add_argument("--run-id", default=None, help="Run under runs/")
+    compare.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=1)
     compare.add_argument("--threshold", type=float, default=0.7)
     compare.add_argument("--topk", type=int, default=3)
     compare.add_argument("--batch-size", type=int, default=5000)
@@ -137,10 +105,6 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
-    if args.command == "profile" and args.run_id is None:
-        args.run_id = new_run_id("profile")
-    if args.command == "compare" and args.run_id is None and (args.old or args.new):
-        args.run_id = "manual"
     args.func(args)
 
 
