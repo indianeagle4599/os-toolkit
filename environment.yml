@@ -1,0 +1,6 @@
+# Canonical conda environment for os-toolkit (pip deps in requirements.txt).
+name: ostk
+channels:
+  - defaults
+dependencies:
+  - python=3.13

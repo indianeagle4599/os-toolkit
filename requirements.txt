@@ -1,0 +1,24 @@
+# ─── Runtime ───
+# (none — stdlib only)
+
+# ─── Development (testing) ───
+# Used by: tests/, pytest.ini default run (just test)
+# Why: unit and integration test runner
+# pytest>=8.0
+
+# Used by: AGENTS.md formatting policy; optional pre-commit
+# Why: consistent Python formatting across os_toolkit/, tests/, benchmarks/
+# black>=24.0
+
+# ─── Benchmarking (corpus fetching) ───
+# Used by: benchmarks/fetch_corpus.py (just bench-fetch)
+# Why: HTTP download of registered corpus archives
+# requests>=2.31
+
+# ─── Machine learning (compare pipeline) ───
+# Used by: os_toolkit.analysis.compare, tests marked requires_ml
+# Why: feature matching and progress in analyze compare
+# numpy>=1.26
+# pandas>=2.0
+# scikit-learn>=1.4
+# tqdm>=4.66
