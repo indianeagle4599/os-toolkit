@@ -11,7 +11,7 @@ import os
 import platform
 import sys
 
-from os_toolkit.analysis import usage as analysis_usage
+from os_toolkit.analysis.usage import add_usage_arguments, run_usage
 from os_toolkit.core.config import cfg_get
 
 try:
@@ -43,18 +43,17 @@ Examples:
   python disk_analyzer_pro.py -v 2 -s           # Run in verbose mode with shallow scan
         """,
     )
-    parser.add_argument("-p", "--path", default=config["path"])
-    parser.add_argument("-d", "--max-depth", type=int, default=config["max_depth"])
-    parser.add_argument("-t", "--threshold", type=float, default=config["threshold"])
-    parser.add_argument(
-        "-v", "--verbosity", type=int, choices=[0, 1, 2], default=config["verbosity"]
-    )
-    parser.add_argument(
-        "-s", "--shallow-scan", action="store_true", default=config["shallow_scan"]
+    add_usage_arguments(
+        parser,
+        path_default=config["path"],
+        max_depth=config["max_depth"],
+        threshold=config["threshold"],
+        verbosity=config["verbosity"],
+        shallow_scan=config["shallow_scan"],
     )
     args = parser.parse_args()
 
-    ok = analysis_usage.run_usage(
+    ok = run_usage(
         args.path,
         args.max_depth,
         args.threshold,

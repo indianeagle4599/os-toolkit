@@ -1,5 +1,5 @@
 """
-usage — disk usage tree analysis (single-root; dual-root planned).
+usage — disk usage tree analysis (single-root).
 """
 
 import os
@@ -137,6 +137,33 @@ def print_results(data: Dict, threshold: float, max_depth: int) -> None:
             size_field = f"{item['size']:>{max_size_length}}"
             percentage_field = f"({item['percentage']:5.1f}%)"
             _emit(f"{name_field} {dots} {size_field} {percentage_field}")
+
+
+def add_usage_arguments(
+    parser,
+    *,
+    path_required: bool = False,
+    path_default=None,
+    max_depth: int = 7,
+    threshold: float = 1.0,
+    verbosity: int = 1,
+    shallow_scan: bool = False,
+) -> None:
+    """Register shared disk-usage CLI flags on an argparse parser."""
+    path_kw = {"help": "Root directory"}
+    if path_required:
+        path_kw["required"] = True
+    else:
+        path_kw["default"] = path_default
+    parser.add_argument("-p", "--path", **path_kw)
+    parser.add_argument("-d", "--max-depth", type=int, default=max_depth)
+    parser.add_argument("-t", "--threshold", type=float, default=threshold)
+    parser.add_argument(
+        "-v", "--verbosity", type=int, choices=[0, 1, 2], default=verbosity
+    )
+    parser.add_argument(
+        "-s", "--shallow-scan", action="store_true", default=shallow_scan
+    )
 
 
 def run_usage(

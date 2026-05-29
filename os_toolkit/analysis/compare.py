@@ -77,6 +77,31 @@ def ordered_results(filtered_results, matches):
     return unmatched + sorted(matched, key=lambda x: matches[x[0]][0][1])
 
 
+def _match_rows(filtered_results, matches, paths_old, paths_new):
+    """Yield match rows for console and file export (single source of truth)."""
+    for i, j in ordered_results(filtered_results, matches):
+        old_path = paths_old[i]
+        if j is None:
+            yield {
+                "kind": "unmatched",
+                "old_index": i,
+                "old": old_path,
+                "line": f"X {old_path} -> No match above threshold",
+                "best_score": round(matches[i][0][1], 4) if matches[i] else 0.0,
+            }
+        else:
+            score = matches[i][0][1]
+            yield {
+                "kind": "matched",
+                "old_index": i,
+                "old": old_path,
+                "new_index": j,
+                "new": paths_new[j],
+                "score": round(score, 4),
+                "line": f"OK {old_path} -> {paths_new[j]} ({score:.2f})",
+            }
+
+
 def match_candidates(matches, paths_old, paths_new):
     return [
         {
@@ -93,14 +118,13 @@ def match_candidates(matches, paths_old, paths_new):
 
 def print_summary(filtered_results, matches, paths_old, paths_new, color=False):
     print("\nFinal Match Results:")
-    for i, j in ordered_results(filtered_results, matches):
-        if j is None:
+    for row in _match_rows(filtered_results, matches, paths_old, paths_new):
+        if row["kind"] == "unmatched":
             red, reset = ("\033[91m", "\033[0m") if color else ("", "")
-            print(f"{red}X {paths_old[i]} -> No match above threshold{reset}")
+            print(f"{red}{row['line']}{reset}")
         else:
-            score = matches[i][0][1]
             green, reset = ("\033[92m", "\033[0m") if color else ("", "")
-            print(f"{green}OK {paths_old[i]} -> {paths_new[j]} ({score:.2f}){reset}")
+            print(f"{green}{row['line']}{reset}")
 
 
 def export_results(filtered_results, matches, paths_old, paths_new, settings, run_dir):
@@ -110,26 +134,24 @@ def export_results(filtered_results, matches, paths_old, paths_new, settings, ru
     unmatched = []
 
     with open(txt_path, "w", encoding="utf-8") as f:
-        for i, j in ordered_results(filtered_results, matches):
-            if j is None:
-                f.write(f"X {paths_old[i]} -> No match above threshold\n")
+        for row in _match_rows(filtered_results, matches, paths_old, paths_new):
+            f.write(row["line"] + "\n")
+            if row["kind"] == "unmatched":
                 unmatched.append(
                     {
-                        "old_index": i,
-                        "old": paths_old[i],
-                        "best_score": round(matches[i][0][1], 4) if matches[i] else 0.0,
+                        "old_index": row["old_index"],
+                        "old": row["old"],
+                        "best_score": row["best_score"],
                     }
                 )
             else:
-                score = matches[i][0][1]
-                f.write(f"OK {paths_old[i]} -> {paths_new[j]} ({score:.2f})\n")
                 summary.append(
                     {
-                        "old_index": i,
-                        "old": paths_old[i],
-                        "new_index": j,
-                        "new": paths_new[j],
-                        "score": round(score, 4),
+                        "old_index": row["old_index"],
+                        "old": row["old"],
+                        "new_index": row["new_index"],
+                        "new": row["new"],
+                        "score": row["score"],
                     }
                 )
 
@@ -143,7 +165,10 @@ def export_results(filtered_results, matches, paths_old, paths_new, settings, ru
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(
             {
-                "inputs": {"old": settings.old, "new": settings.new},
+                "inputs": {
+                    "old_features": settings.old,
+                    "new_features": settings.new,
+                },
                 "settings": {
                     "threshold": settings.threshold,
                     "topk": settings.topk,
@@ -162,7 +187,10 @@ def export_results(filtered_results, matches, paths_old, paths_new, settings, ru
         run_dir,
         {
             "command": "analyze.compare",
-            "inputs": {"old": settings.old, "new": settings.new},
+            "inputs": {
+                "old_features": settings.old,
+                "new_features": settings.new,
+            },
             "outputs": {"matches_json": json_path, "matches_txt": txt_path},
             "settings": {
                 "threshold": settings.threshold,
@@ -171,6 +199,7 @@ def export_results(filtered_results, matches, paths_old, paths_new, settings, ru
             },
             "counts": {**counts, "unmatched_rows": len(unmatched)},
         },
+        merge=True,
     )
     print(f"\n[INFO] Exported match results to:\n  - {txt_path}\n  - {json_path}")
 
@@ -185,7 +214,9 @@ def cache_name(settings) -> str:
 def run_compare(settings) -> None:
     load_match_dependencies()
     start_time = time.time()
-    run_path = run_dir_for_paths(settings.old, settings.new, settings.run_id)
+    run_path = getattr(settings, "run_path", None) or run_dir_for_paths(
+        settings.old, settings.new, settings.run_id
+    )
 
     print(
         f"[INFO] name-sim: {settings.name_sim}, topK: {settings.topk}, "
@@ -215,8 +246,19 @@ def run_compare(settings) -> None:
 
     if os.path.exists(name_cache_path):
         name_sim = load_similarity_matrix(name_cache_path)
-        print(f"[CACHE] Loaded name similarity from {name_cache_path}")
+        expected = (len(df_old), len(df_new))
+        if name_sim.shape != expected:
+            print(
+                f"[WARN] Name-sim cache shape {name_sim.shape} != {expected}; recomputing."
+            )
+            os.remove(name_cache_path)
+            name_sim = None
+        else:
+            print(f"[CACHE] Loaded name similarity from {name_cache_path}")
     else:
+        name_sim = None
+
+    if name_sim is None:
         print("[INFO] Computing name similarity matrix...")
         ngram_range = tuple(map(int, settings.tfidf_ngrams.split("-")))
         sim_engine = NameSimilarity(
@@ -269,6 +311,7 @@ def settings_from_namespace(args) -> SimpleNamespace:
         old=args.old,
         new=args.new,
         run_id=run_id,
+        run_path=getattr(args, "run_path", None),
         threshold=args.threshold,
         topk=args.topk,
         batch_size=args.batch_size,

@@ -4,6 +4,7 @@ archive — smart zip public API and CLI orchestration.
 
 import os
 
+from os_toolkit.core.format import human_readable_size
 from os_toolkit.transfer.archive_scan import (
     base,
     choose_candidates,
@@ -12,7 +13,6 @@ from os_toolkit.transfer.archive_scan import (
     print_candidates,
     scan_root,
     settings,
-    _size_label,
 )
 from os_toolkit.transfer.archive_zip import run_zip_jobs
 
@@ -57,7 +57,7 @@ def confirm_execute(candidates, cfg):
     total_bytes = sum(c.stat.bytes for c in candidates)
     msg = (
         f"\nAbout to create {len(candidates):,} zip(s) "
-        f"from ~{_size_label(total_bytes)} of source data."
+        f"from ~{human_readable_size(total_bytes, extended_units=True)} of source data."
     )
     if cfg["delete_originals"]:
         msg += "\nOriginal folders will be DELETED after each valid zip."

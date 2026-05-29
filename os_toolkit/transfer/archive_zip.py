@@ -10,12 +10,8 @@ import time
 import zipfile
 from collections import Counter
 
-from os_toolkit.core.paths import extended_path
-from os_toolkit.transfer.archive_scan import (
-    Candidate,
-    _size_label,
-    is_descendant,
-)
+from os_toolkit.core.format import human_readable_size
+from os_toolkit.transfer.archive_scan import is_descendant, zip_non_dir_count
 
 
 def _fail(candidate, error, **kw):
@@ -50,9 +46,7 @@ def validate_existing_zip(candidate):
     if not os.path.exists(path):
         return None
     try:
-        with zipfile.ZipFile(path, "r") as archive:
-            archived = sum(1 for info in archive.infolist() if not info.is_dir())
-            bad = archive.testzip()
+        archived, bad = zip_non_dir_count(path, verify_crc=True)
         valid = archived == candidate.stat.files and bad is None
         return {
             "status": "already_done" if valid else "zip_exists_invalid",
@@ -242,7 +236,7 @@ def run_zip_jobs(candidates, cfg):
         if r["status"] == "created":
             prefix = "Recreated" if r.get("replaced_invalid_zip") else "Created"
             print(
-                f"  {prefix} {_size_label(r['zip_bytes'])}; "
+                f"  {prefix} {human_readable_size(r['zip_bytes'], extended_units=True)}; "
                 f"validation passed: {r['zip_path']}"
             )
         elif r["status"] == "already_done":

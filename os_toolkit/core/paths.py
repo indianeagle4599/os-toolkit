@@ -27,3 +27,13 @@ def path_parts(rel: str) -> tuple:
     if not rel:
         return ()
     return tuple(part for part in str(rel).replace("\\", "/").split("/") if part)
+
+
+def is_under(child: PathLike, parent: PathLike) -> bool:
+    """True when child is parent or a path inside parent."""
+    child_abs = os.path.normcase(os.path.abspath(os.fspath(child)))
+    parent_abs = os.path.normcase(os.path.abspath(os.fspath(parent)))
+    if child_abs == parent_abs:
+        return True
+    sep = os.sep
+    return child_abs.startswith(parent_abs + sep)

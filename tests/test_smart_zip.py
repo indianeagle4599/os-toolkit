@@ -61,3 +61,15 @@ def test_scan_and_choose_candidates(tmp_path):
     stats = scan_root(cfg)
     candidates = choose_candidates(stats, cfg)
     assert isinstance(candidates, list)
+
+
+def test_default_zip_output_outside_root(tmp_path):
+    """Guarantee: default zip paths lie outside scan root when --output omitted."""
+    from os_toolkit.core.paths import is_under
+    from os_toolkit.transfer.archive_scan import default_zip_output, planned_zip_path
+
+    root = tmp_path / "scan"
+    sub = root / "data"
+    sub.mkdir(parents=True)
+    assert not is_under(default_zip_output(str(root)), str(root))
+    assert not is_under(planned_zip_path(str(sub), str(root), ""), str(root))

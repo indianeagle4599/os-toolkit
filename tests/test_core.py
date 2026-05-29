@@ -5,7 +5,7 @@ from types import ModuleType
 
 from os_toolkit.core.config import cfg_get
 from os_toolkit.core.format import format_eta, human_readable_size
-from os_toolkit.core.paths import extended_path, path_parts, rel_path
+from os_toolkit.core.paths import extended_path, is_under, path_parts, rel_path
 
 
 def test_human_readable_size_boundaries():
@@ -45,3 +45,14 @@ def test_extended_path_windows_prefix(monkeypatch):
     monkeypatch.setattr(os, "name", "nt")
     out = extended_path("C:\\temp\\file.txt")
     assert out.startswith("\\\\?\\")
+
+
+def test_is_under(tmp_path):
+    root = tmp_path / "root"
+    sub = root / "sub"
+    sub.mkdir(parents=True)
+    sibling = tmp_path / "other"
+    sibling.mkdir()
+    assert is_under(str(sub), str(root))
+    assert is_under(str(root), str(root))
+    assert not is_under(str(sibling), str(root))

@@ -15,7 +15,7 @@ from os_toolkit.analysis.runs import (
     ensure_profile,
     run_dir,
 )
-from os_toolkit.analysis.usage import run_usage
+from os_toolkit.analysis.usage import add_usage_arguments, run_usage
 
 
 def cmd_usage(args):
@@ -53,6 +53,7 @@ def cmd_compare(args):
         new_root, run_path, prefix="new_", verbosity=args.verbosity
     )
     args.run_id = run_id
+    args.run_path = run_path
 
     if args.verbosity >= 1:
         print(f"\nRun artifacts: {run_path}")
@@ -67,11 +68,7 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
 
     usage = sub.add_parser("usage", help="Disk usage tree for one root")
-    usage.add_argument("-p", "--path", required=True, help="Root directory")
-    usage.add_argument("-d", "--max-depth", type=int, default=7)
-    usage.add_argument("-t", "--threshold", type=float, default=1.0)
-    usage.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=1)
-    usage.add_argument("-s", "--shallow-scan", action="store_true")
+    add_usage_arguments(usage, path_required=True)
     usage.set_defaults(func=cmd_usage)
 
     compare = sub.add_parser(
@@ -85,18 +82,55 @@ def build_parser():
         help="Run folder under runs/ (default: stable id from both roots)",
     )
     compare.add_argument("-v", "--verbosity", type=int, choices=[0, 1, 2], default=1)
-    compare.add_argument("--threshold", type=float, default=0.7)
-    compare.add_argument("--topk", type=int, default=3)
-    compare.add_argument("--batch-size", type=int, default=5000)
-    compare.add_argument("--structure-filter", type=float, default=0.4)
     compare.add_argument(
-        "--name-sim", default="tfidf", choices=["rapidfuzz", "tfidf", "bert"]
+        "--threshold",
+        type=float,
+        default=0.7,
+        help="Minimum match score (0-1) for summary lines",
     )
-    compare.add_argument("--tfidf-ngrams", default="2-4")
-    compare.add_argument("--tokenizer", default="char", choices=["char", "path"])
-    compare.add_argument("--depth-limit", type=int, default=0)
-    compare.add_argument("--workers", type=int, default=min(os.cpu_count() or 1, 6))
-    compare.add_argument("--color", action="store_true")
+    compare.add_argument(
+        "--topk", type=int, default=3, help="Top candidate matches per old row"
+    )
+    compare.add_argument(
+        "--batch-size",
+        type=int,
+        default=5000,
+        help="Structure similarity batch size (rows)",
+    )
+    compare.add_argument(
+        "--structure-filter",
+        type=float,
+        default=0.4,
+        help="Min structure similarity before name scoring",
+    )
+    compare.add_argument(
+        "--name-sim",
+        default="tfidf",
+        choices=["rapidfuzz", "tfidf", "bert"],
+        help="Name similarity backend (bert/rapidfuzz need extra pip packages)",
+    )
+    compare.add_argument(
+        "--tfidf-ngrams", default="2-4", help="TF-IDF n-gram range, e.g. 2-4"
+    )
+    compare.add_argument(
+        "--tokenizer",
+        default="char",
+        choices=["char", "path"],
+        help="Tokenize folder names by character or path segment",
+    )
+    compare.add_argument(
+        "--depth-limit",
+        type=int,
+        default=0,
+        help="Top-level group depth for text summary (0 = root children)",
+    )
+    compare.add_argument(
+        "--workers",
+        type=int,
+        default=min(os.cpu_count() or 1, 6),
+        help="Parallel workers for top-level filter",
+    )
+    compare.add_argument("--color", action="store_true", help="ANSI colors in summary")
     compare.set_defaults(func=cmd_compare)
 
     return parser

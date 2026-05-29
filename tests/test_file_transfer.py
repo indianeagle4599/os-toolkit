@@ -65,3 +65,12 @@ def test_prescan_finds_files(tmp_path):
     _make_tree(tmp_path)
     found = prescan_source(str(tmp_path))
     assert len(found) == 2
+
+
+def test_rejects_dest_inside_source(tmp_path, capsys):
+    """Adversarial: destination inside source must fail without copying."""
+    src = tmp_path / "src"
+    _make_tree(src)
+    dst = src / "nested" / "dest"
+    assert parallel_copy(str(src), str(dst), workers=1, verbosity=0) is False
+    assert "inside source" in capsys.readouterr().out
