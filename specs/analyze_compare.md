@@ -2,26 +2,26 @@
 
 ## What it does
 
-Loads old and new feature CSVs from profile runs, normalizes structural features, computes similarity, applies optional name-similarity backends, filters to top-level groups for human-readable summaries, and writes match artifacts. Can resolve CSV paths from a prior run id. May cache similarity matrices under the run cache directory.
+Compares two directory trees. Profiles each root internally (nested JSON + features CSV under `runs/`), reusing cached profiles when the root path and directory mtime are unchanged, then runs structure and name similarity matching and writes match artifacts.
 
 ## Inputs
 
-Required: paths to old and new feature CSVs, or a `--run-id` that resolves `old_features.csv` and `new_features.csv` under that run.
+Required: `--old` and `--new` directory roots.
 
-Optional: similarity threshold, top-k, batch size, structure filter, name-similarity backend and related tokenizer or n-gram settings, depth limit, worker count, color output, run id for manifest updates.
+Optional: `--run-id` (default: stable id derived from both roots), similarity threshold, top-k, batch size, structure filter, name-similarity backend and related tokenizer or n-gram settings, depth limit, worker count, color output, verbosity 0–2.
 
 ## Outputs
 
-Timer lines and summary lines on the console. `matches.json`, `matches.txt`, and updated `manifest.json` under the run directory. Optional compressed similarity cache files.
+Console scan messages when profiling runs; cache-hit line when a profile is reused. Timer lines and summary lines from compare. `old_*` / `new_*` profile artifacts, `matches.json`, `matches.txt`, and `manifest.json` under the run directory. Optional compressed similarity cache files.
 
 ## Guarantees
 
-Read-only on original filesystem trees (inputs are CSV only). Given identical CSV inputs and unchanged cache files, matching output is reproducible.
+Does not delete or modify source files. Given the same roots and unchanged directory mtimes, re-running compare reuses profile CSVs without rescanning. Compare matching output is reproducible for identical feature CSV inputs and unchanged similarity cache files.
 
 ## Known limits
 
-Requires numpy, pandas, and tqdm. Optional rapidfuzz or sentence-transformers for some name backends. Memory grows with product of row counts for similarity. Top-level filter may collapse sibling paths in the text summary. Process exits with an error when dependencies or required columns are missing.
+Requires numpy, pandas, and tqdm for compare. Optional rapidfuzz or sentence-transformers for some name backends. Memory grows with product of row counts for similarity. Top-level filter may collapse sibling paths in the text summary. Staleness uses each root directory mtime only (not per-file changes with unchanged root mtime).
 
 ## Adversarial surfaces
 
-Missing Python dependencies; empty CSV; schema mismatch between old and new; very large CSVs; stale cache after CSV regeneration; Windows path strings embedded in CSV cells.
+Missing Python dependencies; invalid or missing root directories; empty tree; permission skips during profile; very large trees; stale similarity cache after profile regeneration; Windows path strings embedded in CSV cells.
