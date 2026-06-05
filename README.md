@@ -30,7 +30,9 @@ python analyze_pro.py --help
 
 **Optional — developer shortcuts:** with [just](https://github.com/casey/just) installed, `just list` shows recipes such as `just test`, `just transfer --help`, `just analyze usage --help`.
 
-**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (25 passed, 1 deselected at last check). Or `just test`.
+**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (54 passed, 2 deselected at last check). Or `just test`.
+
+**Benchmarks (optional):** `just install bench` for corpus fetch (`requests`); `just check` runs fast tests plus synthetic bench smoke. See [`benchmarks/README.md`](benchmarks/README.md) for multi-drive runs and `just bench transfer|analysis|zip`.
 
 **Behavior guarantees and limits:** see [`specs/README.md`](specs/README.md) (maps each tool to its spec file).
 
@@ -136,4 +138,4 @@ Rule: **CLI arguments always win** over config defaults.
 
 Root `*_pro.py` scripts are the permanent user interface. `os_toolkit/` holds shared implementation only (never `python -m os_toolkit`). Analysis artifacts go under `runs/`.
 
-Remaining roadmap: benchmarks, deeper analysis modes, expand `transfer/`, additional domains with matching root tools.
+Remaining roadmap: bench orchestration (multi-run aggregate), deeper analysis modes, expand `transfer/`, additional domains with matching root tools.

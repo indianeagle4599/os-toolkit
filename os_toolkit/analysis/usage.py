@@ -36,6 +36,32 @@ def get_total_size(path: str) -> int:
     return total
 
 
+def index_file_sizes(root: str) -> Dict[str, int]:
+    """Return {relative_path: size_bytes} for every file under root."""
+    sizes: Dict[str, int] = {}
+    root_abs = os.path.abspath(root)
+    if not os.path.isdir(root_abs):
+        return sizes
+
+    def walk(dir_path: str) -> None:
+        try:
+            with os.scandir(dir_path) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            rel = os.path.relpath(entry.path, root_abs)
+                            sizes[rel] = entry.stat().st_size
+                        elif entry.is_dir(follow_symlinks=False):
+                            walk(entry.path)
+                    except OSError:
+                        continue
+        except OSError:
+            pass
+
+    walk(root_abs)
+    return sizes
+
+
 def scan_directory(
     path: str, max_depth: int, current_depth: int, verbosity: int, shallow_scan: bool
 ) -> Optional[Dict]:

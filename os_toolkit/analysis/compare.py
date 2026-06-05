@@ -276,12 +276,18 @@ def run_compare(settings) -> None:
         print(f"[CACHE] Saved name similarity to {name_cache_path}")
 
     with timer("Top-k filtering"):
-        final_matrix = 0.6 * structure_sim + 0.4 * name_sim
-        total = final_matrix.shape[0]
+        total = structure_sim.shape[0]
         batch = 1000
+        sparse_name = hasattr(name_sim, "tocsr")
+        name_csr = name_sim.tocsr() if sparse_name else name_sim
         matches = []
         for i in tqdm(range(0, total, batch), desc="Top-k Filtering"):
-            chunk = final_matrix[i : i + batch]
+            struct_chunk = structure_sim[i : i + batch]
+            if sparse_name:
+                name_chunk = name_csr[i : i + batch].toarray().astype(np.float32)
+            else:
+                name_chunk = name_sim[i : i + batch]
+            chunk = 0.6 * struct_chunk + 0.4 * name_chunk
             indices = np.argsort(-chunk, axis=1)[:, :topk]
             values = np.take_along_axis(chunk, indices, axis=1)
             for row_v, row_i in zip(values, indices):

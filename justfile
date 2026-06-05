@@ -9,11 +9,33 @@ test:
 
 # Full pytest including slow and ML markers.
 test-all:
-    python -m pytest -m ""
+    python -m pytest -o addopts=
 
 # Run pytest on a single file path.
 test-file FILE:
     python -m pytest {{FILE}}
+
+# Run one benchmark runner (transfer | analysis | zip); forwards CLI args.
+bench target *ARGS:
+    python -m benchmarks.run_{{target}} {{ARGS}}
+
+# Run bench N times and compute median via orchestrator.
+bench-multi target *ARGS:
+    python -m benchmarks.orchestrator {{target}} {{ARGS}}
+
+# Aggregate existing JSONL results into medians.
+bench-aggregate *ARGS:
+    python -m benchmarks.aggregate {{ARGS}}
+
+# Download benchmark corpus archives.
+bench-fetch:
+    python -m benchmarks.fetch_corpus
+
+# Run transfer, analysis, and zip benchmarks.
+bench-all:
+    just bench transfer
+    just bench analysis
+    just bench zip
 
 # Forward args to file_transfer_pro CLI.
 transfer *ARGS:
@@ -35,8 +57,8 @@ disk *ARGS:
 list:
     @just --list
 
-# Fast pytest (bench smoke added Day 5).
-check: test
+# Fast pytest plus synthetic benchmark smoke.
+check: test _bench_smoke
 
 # Install pip extras: dev, bench, ml, or all (stdlib default).
 install PROFILE='':
@@ -71,3 +93,17 @@ clean:
 clean:
     $dirs = @('runs','benchmarks/results','benchmarks/corpus','tmp','.pytest_cache'); foreach ($d in $dirs) { if (Test-Path $d) { Remove-Item -Recurse -Force $d } }
     Get-ChildItem -Recurse -Directory -Filter __pycache__ -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+# Synthetic-only bench smoke (used by check).
+[private]
+_bench_smoke:
+    just bench transfer
+    just bench analysis
+    just bench zip
+
+# Fast pre-flight: unit tests + SSD cross matrix only.
+# Pass --drive-a C:\bench --drive-b D:\bench (or equivalent).
+# Run full suite with: just bench transfer
+bench-quick *ARGS:
+    just check
+    just bench transfer --scenarios cross --media-filter ssd {{ARGS}}

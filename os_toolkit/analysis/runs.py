@@ -69,7 +69,8 @@ def merge_manifest(existing: dict, update: dict) -> dict:
 def write_manifest(run_path: str, data: dict, *, merge: bool = False) -> str:
     path = Path(run_path) / "manifest.json"
     payload = merge_manifest(read_manifest(run_path), data) if merge else data
-    payload = {"updated_at_utc": datetime.now(timezone.utc).isoformat(), **payload}
+    payload = dict(payload)
+    payload["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
         f.write("\n")
@@ -170,6 +171,11 @@ def save_similarity_matrix(matrix, path: str) -> None:
     import numpy as np
 
     path = path.replace(".npy", ".npz")
+    if hasattr(matrix, "tocsr"):
+        from scipy.sparse import save_npz
+
+        save_npz(path, matrix)
+        return
     np.savez_compressed(path, sim=matrix.astype(np.float16))
 
 
@@ -177,5 +183,9 @@ def load_similarity_matrix(path: str):
     import numpy as np
 
     path = path.replace(".npy", ".npz")
-    with np.load(path) as data:
-        return data["sim"].astype(np.float32)
+    with np.load(path, allow_pickle=False) as data:
+        if "sim" in data:
+            return data["sim"].astype(np.float32)
+    from scipy.sparse import load_npz
+
+    return load_npz(path)
