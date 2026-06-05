@@ -66,8 +66,8 @@ Execution order (top to bottom). **FND** is already delivered on branch `feature
 | Id | Name | Detail | Status | Depends on | Target output |
 |----|------|--------|--------|------------|-----------------|
 | **FND** | Foundation (migration + QE) | — | shipped (local) | none | `os_toolkit/`, specs, tests, benchmarks harness |
-| **A** | Operator tooling & bench infra | high | planned | FND | `justfile`, four-drive matrix, `specs/future-benchmarks.md` |
-| **MVP-A** | Transfer benchmark on hardware | high | planned | A | JSONL results + `BENCHMARKS.md` transfer baselines |
+| **A** | Operator tooling & bench infra | high | shipped | FND | `justfile`, multi-drive matrix, orchestrator |
+| **MVP-A** | Transfer benchmark on hardware | high | shipped | A | `benchmarks/RESULTS.md` + harness docs |
 | **MVP-B** | Analysis depth & dedupe | high | planned | FND | Per-file inventory, `dedupe_pro`, expanded compare |
 | **2a** | Large files & tree export | high | planned | MVP-B | `large_files_pro`, `tree_export_pro` |
 | **2b-1** | Backup check (stat/mtime) | high | planned | MVP-B | `backup_check_pro` stage 1 |
@@ -96,10 +96,10 @@ Establish `os_toolkit/` domains, thin root CLIs, product specs, pytest suite, an
 
 **Features delivered**
 
-- `file_transfer_pro`, `disk_analyzer_pro`, `smart_zip_pro`, `analyze_pro` (usage | profile | compare)
+- `file_transfer_pro`, `disk_analyzer_pro`, `smart_zip_pro`, `analyze_pro` (`usage`, `compare`; profile internal)
 - `specs/` contracts for shipped tools
-- `pytest` fast suite (20 tests); compare behind `requires_ml`
-- `benchmarks/` synthetic runners (transfer, analysis, zip scan/score)
+- `pytest` fast suite (67 tests); compare behind `requires_ml`
+- `benchmarks/` synthetic runners + multi-drive matrix (transfer, analysis, zip)
 
 **Functions and modules**
 
@@ -111,8 +111,8 @@ Establish `os_toolkit/` domains, thin root CLIs, product specs, pytest suite, an
 **KPIs**
 
 - **Functional:** All four root CLIs run end-to-end on a sample tree; `analyze_pro profile` writes under `runs/`; transfer dry-run performs no writes.
-- **Quality:** `pytest -m "not slow and not requires_ml"` — 20 passed; each test file cites spec guarantees.
-- **Performance:** Synthetic bench smoke passes; no hardware baseline yet (MVP-A).
+- **Quality:** `pytest -m "not slow and not requires_ml"` — 67 passed; each test file cites spec guarantees.
+- **Performance:** Synthetic bench smoke passes; hardware transfer baselines in `benchmarks/RESULTS.md` (MVP-A).
 - **Reuse:** N/A (foundation phase).
 
 **Success modes**
@@ -132,7 +132,7 @@ Establish `os_toolkit/` domains, thin root CLIs, product specs, pytest suite, an
 
 ### Phase A — Operator tooling and bench infrastructure
 
-**Status:** planned (prompt 3 execution)  
+**Status:** shipped  
 **Depends on:** FND  
 **Unlocks:** MVP-A, 2d (partial)
 
@@ -141,8 +141,9 @@ Give operators one command surface (`just`) and extend benchmarks for honest mul
 
 **Features delivered**
 
-- `just test`, `just bench-*`, `just transfer/analyze/zip/disk -- …`, `just clean`, `just check`
+- `just test`, `just bench-*`, `just bench-multi`, `just transfer/analyze/zip/disk -- …`, `just clean`, `just check`
 - Four-drive `--drive-a` … `--drive-d` matrix for transfer (N²) and analysis (N within-drive scans)
+- `benchmarks/orchestrator.py`, `run_tool.py`, `aggregate.py`, `outliers.py` — multi-run medians with MAD outlier filter
 - `specs/future-benchmarks.md` — resume, adaptive, strategy bench **plans only**
 - AGENTS.md: Top-Down Intent Rule + dependency documentation rule (commit zero, before A code)
 
@@ -152,13 +153,14 @@ Give operators one command surface (`just`) and extend benchmarks for honest mul
 - `benchmarks/matrix.py` — drive/scenario iteration
 - `benchmarks/devices.py` — extended `physical_id`, `same_physical_device`
 - `benchmarks/run_transfer.py`, `benchmarks/run_analysis.py` — matrix integration
+- `benchmarks/orchestrator.py`, `run_tool.py`, `aggregate.py`, `outliers.py` — isolated timing + multi-run aggregation
 - `requirements.txt`, `README.md` — deps + install just
 - `specs/future-benchmarks.md` — planning doc
 
 **KPIs**
 
 - **Functional:** `just check` runs fast pytest + synthetic bench; with 1–4 drive paths, transfer emits JSONL with `same_physical_device`; analysis emits N scan records (not N²).
-- **Quality:** No regression in existing 20 tests; bench runners remain non-asserting (measure only).
+- **Quality:** No regression in fast pytest suite (67 tests); bench runners remain non-asserting (measure only).
 - **Performance:** No fixed “beat X%” target; establish tagged JSONL on owner hardware optional post-merge.
 - **Reuse:** Target **≥60%** reuse (matrix imports `devices`, `corpus`; recipes are thin shell).
 
@@ -183,7 +185,7 @@ Give operators one command surface (`just`) and extend benchmarks for honest mul
 
 ### Phase MVP-A — Transfer benchmark on real hardware
 
-**Status:** planned  
+**Status:** shipped — six 1G profile/filter suites complete (2026-06-04)  
 **Depends on:** A  
 **Unlocks:** 2d (baseline data); informs transfer tuning (not a code phase by itself)
 
@@ -192,30 +194,30 @@ Run transfer benchmarks on real disks, record honest baselines for `file_transfe
 
 **Features delivered**
 
-- Documented transfer benchmark runs on owner hardware (1–4 drives)
-- `BENCHMARKS.md` (or equivalent committed summary) interpreting JSONL from `benchmarks/results/`
-- Comparison includes `os_toolkit.transfer`, `shutil.copytree`, and `rsync`/`robocopy` when available
+- Six orchestrator suites on owner hardware (1G `balanced`, `tiny-heavy`, `media-heavy` × SSD/HDD filters)
+- [`benchmarks/RESULTS.md`](../benchmarks/RESULTS.md) — committed summary with scenario tables, methodology, caveats
+- Comparison includes `os_toolkit.transfer`, `shutil.copytree`, and `robocopy` on Windows
 
 **Functions and modules**
 
-- No new product modules required; uses `benchmarks/run_transfer.py`, `just bench-transfer`
-- `BENCHMARKS.md` — human-readable summary artifact (new)
+- Uses `benchmarks/run_transfer.py`, `benchmarks/orchestrator.py`, `just bench-multi transfer`
+- [`benchmarks/RESULTS.md`](../benchmarks/RESULTS.md) — human-readable summary artifact
 
 **KPIs**
 
 - **Functional:** At least one full matrix run (owner-chosen N drives) completes; JSONL lines include `corpus_signature`, `same_physical_device`, `scenario_id`, `tool`, `wall_time_sec`, `bytes_per_sec`.
 - **Quality:** Results reproducible on same machine + same corpus signature; `unverified` tag documented if `--ignore-manifest`.
-- **Performance:** **Baseline only** — record bytes/sec per tool/scenario; **no mandatory “≥X% vs shutil”** unless owner adds a machine-specific footnote in `BENCHMARKS.md` (not a CI gate).
+- **Performance:** **Baseline only** — record bytes/sec per tool/scenario; **no mandatory “≥X% vs shutil”** unless owner adds a machine-specific footnote in `benchmarks/RESULTS.md` (not a CI gate).
 - **Reuse:** **≥80%** (execution via existing `parallel_copy` + bench harness).
 
 **Success modes**
 
-- `BENCHMARKS.md` committed with date, hardware description, drive layout, and caveats (partitioned HDD vs true multi-disk).
+- `benchmarks/RESULTS.md` committed with date, hardware description, drive layout, and caveats (partitioned HDD vs true multi-disk).
 - No stub runners; no TODO in committed bench code paths used.
 
 **How we plan to achieve this**
 
-- `just bench-transfer -- --drive-a …` (and B/C/D as available).
+- `just bench-multi transfer --drive-a …` (and B/C/D as available); see `benchmarks/README.md`.
 - Summarize JSONL; note `same_physical_device: true` pairs explicitly.
 - Do not fetch full corpus in this phase unless owner runs `just bench-fetch` separately.
 
@@ -253,8 +255,8 @@ Move analysis from directory rollups to **per-file** records (size, mtime, file-
 **KPIs**
 
 - **Functional:** On a test tree with two identical files, `dedupe_pro` reports one duplicate group of size 2; profile/features include hash column or sidecar; compare loads new schema without silent fallback to rollup-only.
-- **Quality:** New tests cite spec guarantees; existing 20 tests pass; new tests for hash + dedupe; compare ML tests still `requires_ml`.
-- **Performance:** **No fixed wall-time target**; optional bench of inventory pass on `small/mixed` documented in `BENCHMARKS.md` analysis section if run.
+- **Quality:** New tests cite spec guarantees; fast suite stays green; new tests for hash + dedupe; compare ML tests still `requires_ml`.
+- **Performance:** **No fixed wall-time target**; optional bench of inventory pass on `small/mixed` documented in `benchmarks/RESULTS.md` analysis section if run.
 - **Reuse:** Introduces **`hashing`** consumed by ≥3 HORIZON tools (dedupe, backup_check 2b-2, expanded compare); target **≥50%** reuse of `paths`, existing walker patterns.
 
 **Success modes**
@@ -460,7 +462,7 @@ If benchmarks infrastructure already covers perf needs, **promote** documentatio
 
 **If promoted — features delivered**
 
-- `BENCHMARKS.md` section for analysis/transfer/zip baselines
+- `benchmarks/RESULTS.md` section for analysis/transfer/zip baselines (extend committed summary)
 - Optional `just bench-report` summarizing JSONL — **only if** not duplicating manual steps
 
 **If deferred**
@@ -685,7 +687,7 @@ flowchart TB
 
 | # | Question |
 |---|----------|
-| 1 | After MVP-A results are committed locally, should **MVP-B start immediately** or wait for an owner review window? |
+| 1 | **MVP-A results committed** in `benchmarks/RESULTS.md` — should **MVP-B start immediately** or wait for an owner review window? |
 | 2 | **2b-1 vs bundled 2b:** HORIZON locks two-stage delivery; PHASES recommends **separate phases 2b-1 and 2b-2** — confirm or merge into one phase with two commits. |
 | 3 | **Phase 2d promotion:** What triggers promote vs defer? Proposed: all three criteria in Phase 2d entry must be met. |
 | 4 | **First push to origin:** Single 29+ commit stack vs PR split (foundation+QE vs A+MVP-A vs MVP-B+Tier2)? |

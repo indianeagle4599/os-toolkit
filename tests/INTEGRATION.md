@@ -34,13 +34,13 @@ Bench scripts are invoked via `python -m benchmarks.<script>`, not as standalone
 ```bash
 just bench-fetch
 python -m benchmarks.corpus --profile small/mixed
-just bench-multi -- --suite all --corpus benchmarks/corpus/small/mixed \
-  --drive-a <SSD_A> --drive-b <SSD_B> --results-dir benchmarks/results
-# Single-run (optional):
-just bench analysis -- --drive-a <SSD_A> --drive-b <SSD_B> --corpus benchmarks/corpus/small/mixed --output benchmarks/results/analysis_run1.jsonl
-just bench zip -- --corpus benchmarks/corpus/small/mixed --output benchmarks/results/zip_run1.jsonl
-just bench transfer -- --drive-a <SSD_A> --drive-b <SSD_B> --scenarios all --corpus benchmarks/corpus/small/mixed --output benchmarks/results/transfer_run1.jsonl
+just bench-multi transfer --drive-a <SSD_A> --drive-b <SSD_B> --drive-c <HDD_C> \
+  --profile 1G/balanced --corpus benchmarks/corpus/1G/balanced \
+  --scenarios all --media-filter ssd --results-dir benchmarks/results/my-run
+# Synthetic smoke (no hardware): just check
 ```
+
+Published owner-machine numbers: [`benchmarks/RESULTS.md`](../benchmarks/RESULTS.md). Full reproduce steps: [`benchmarks/README.md`](../benchmarks/README.md#reproduce-on-your-hardware).
 
 ## When to run what
 

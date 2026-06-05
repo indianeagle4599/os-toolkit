@@ -6,6 +6,27 @@
 `os-toolkit` is a Python-first OS utility repo for file system operations that need more **control**, **safety**, and **operational clarity** than ad-hoc shell commands.
 It is a practical layer between raw `os`/`shutil` and a future agent-native ops toolkit.
 
+## Transfer performance (1G copy benchmarks)
+
+Hardware copy benchmarks on ~1 GB corpora (Windows, SSD/HDD matrix). **Our tool:** `os_toolkit.transfer` via `file_transfer_pro.py`. Compared to `stdlib.copytree` and `robocopy`. Medians from multi-run orchestrator (≥3 valid runs, MAD outliers removed).
+
+| Profile | Storage | **os_toolkit** (ours) | vs copytree | vs robocopy |
+|---------|---------|----------------------|-------------|-------------|
+| `1G/balanced` | SSD | **~14 s**, **~70 MB/s** | ~1.4× | ~1.6× |
+| `1G/balanced` | HDD† | **~13–60 s**, **~17–78 MB/s** | ~1.0–1.4× | ~1.2–1.5× |
+| `1G/tiny-heavy` | SSD | **~15 s**, **~65 MB/s** | ~1.4× | ~1.6× |
+| `1G/tiny-heavy` | HDD† | **~13–66 s**, **~15–77 MB/s** | ~1.0–1.4× | ~1.2–1.5× |
+| `1G/media-heavy` | SSD | **~1.8 s**, **~553 MB/s** | ~1.4× | ~1.5× |
+| `1G/media-heavy` | HDD† | **~3–11 s**, **~93–405 MB/s** | ~1.0–1.4× | ~1.0–1.3× |
+
+†HDD row: five scenarios touching `E:` (HDD); not comparable to SSD-only row. Detail: [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
+
+SSD `1G/balanced`: four scenarios (`a_to_a`, `a_to_b`, `b_to_a`, `b_to_b` on C:/D: SSDs). Median-of-scenario-medians; same `corpus_signature` required to compare elsewhere.
+
+**Full scenario tables:** [benchmarks/RESULTS.md](benchmarks/RESULTS.md) · **How to run (warnings, corpus prep, time):** [benchmarks/README.md](benchmarks/README.md#reproduce-on-your-hardware)
+
+> **Before you benchmark:** Requires multi-GB dataset fetch, ~1 GB+ free space per drive used, and **real full-tree copies** on paths you choose. A full 1G matrix suite can run for **hours**. Use empty bench folders only.
+
 ## Setup
 
 **Requirements:** Python 3.10+ on your PATH. Clone the repo and run scripts from the repo root — no `pip install` required for copy, usage, or smart zip.
@@ -21,7 +42,7 @@ python analyze_pro.py --help
 
 | Tool | Role | Stdlib-only? |
 |------|------|--------------|
-| `file_transfer_pro.py` | Parallel copy (resume, dry-run, strategies) | Yes |
+| `file_transfer_pro.py` | Disk-aware parallel copy (SSD/HDD routing, resume, dry-run) | Yes |
 | `disk_analyzer_pro.py` | Directory usage tree (legacy entry) | Yes |
 | `smart_zip_pro.py` | Zip recommendations / optional archives | Yes |
 | `analyze_pro.py` | `usage`, `compare` subcommands | `usage` yes; `compare` needs ML stack |
@@ -30,9 +51,9 @@ python analyze_pro.py --help
 
 **Optional — developer shortcuts:** with [just](https://github.com/casey/just) installed, `just list` shows recipes such as `just test`, `just transfer --help`, `just analyze usage --help`.
 
-**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (54 passed, 2 deselected at last check). Or `just test`.
+**Tests (optional):** `pip install pytest` then `python -m pytest -m "not slow and not requires_ml" -q` (67 passed, 2 deselected at last check). Or `just test`.
 
-**Benchmarks (optional):** `just install bench` for corpus fetch (`requests`); `just check` runs fast tests plus synthetic bench smoke. See [`benchmarks/README.md`](benchmarks/README.md) for multi-drive runs and `just bench transfer|analysis|zip`.
+**Benchmarks (optional):** `just install bench` for corpus fetch (`requests`); `just check` runs fast tests plus synthetic bench smoke. Hardware transfer medians: `just bench-multi transfer ...` — see [benchmarks/README.md](benchmarks/README.md) (prep, warnings, runtime) and published numbers in [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
 
 **Behavior guarantees and limits:** see [`specs/README.md`](specs/README.md) (maps each tool to its spec file).
 
@@ -62,9 +83,10 @@ python smart_zip_pro.py --root . --interactive   # prompt per candidate
 
 ## Current phase
 
-The repo is in **migration-first** mode:
-- **Analysis pillar**: inspect, profile, and compare directory trees.
-- **Transfer pillar**: copy and package data safely with resume/validation behavior.
+The repo is in **migration-first** mode (package + shims largely complete):
+- **Analysis pillar**: inspect, profile (internal), and compare directory trees.
+- **Transfer pillar**: disk-aware copy and zip packaging with resume/validation behavior.
+- **Benchmarks**: harness shipped; owner 1G transfer baselines in [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).
 
 Destructive behavior is never default; dry-run and explicit confirmation patterns are preferred.
 
@@ -83,13 +105,14 @@ os-toolkit/
     analysis/
     transfer/
   specs/                      # per-tool behavior contracts
+  benchmarks/                 # performance harness (results gitignored)
 ```
 
 ## What is usable today
 
 ### 1) `file_transfer_pro.py`
 
-Parallel file copy with resume (skip when destination size matches source), dry-run, adaptive workers, and progress reporting. Rejects destination paths inside the source tree.
+Disk-aware parallel copy: SSD paths use threaded `ssd_copy`; HDD paths use sequential `hdd_copy`. Resume (skip when destination size matches source), dry-run, byte progress bar, and verbosity levels. Rejects destination paths inside the source tree.
 
 ```bash
 python file_transfer_pro.py --source "<src>" --dest "<dst>"
@@ -138,4 +161,4 @@ Rule: **CLI arguments always win** over config defaults.
 
 Root `*_pro.py` scripts are the permanent user interface. `os_toolkit/` holds shared implementation only (never `python -m os_toolkit`). Analysis artifacts go under `runs/`.
 
-Remaining roadmap: bench orchestration (multi-run aggregate), deeper analysis modes, expand `transfer/`, additional domains with matching root tools.
+Remaining roadmap: post-copy tree verification, MVP-B analysis depth (`dedupe_pro`, per-file inventory), additional domains per [`specs/PHASES.md`](specs/PHASES.md). Transfer hardware baselines: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).

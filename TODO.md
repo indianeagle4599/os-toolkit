@@ -2,27 +2,23 @@
 
 Gitignored. Align with `specs/HORIZON.md` and `specs/PHASES.md`.
 
-## Shipped on feature/quality-engineering (local, not pushed to origin/master)
+## Shipped (local branch)
 
 - [X] Migration: `os_toolkit/core`, `analysis`, `transfer`; root CLIs; `migration_pro/` removed
-- [X] QE: specs (6 tools), pytest (20 fast), benchmarks harness (3 runners)
+- [X] QE: specs, pytest (67 fast), benchmarks harness + orchestrator
+- [X] Phase A: `justfile`, multi-drive matrix, `run_tool`, aggregate/outliers
+- [X] MVP-A: six 1G transfer suites; [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) summary
+- [X] Transfer: disk-aware `ssd_copy`/`hdd_copy`, robocopy backend, byte progress
 - [X] `runs/` gitignored; LICENSE, NOTICE, `requirements.txt` (commented)
 
-## Next (prompt 3 — Phase A)
-
-- [ ] Commit 0: AGENTS Top-Down Intent + dependency documentation rules
-- [ ] `justfile` + `requirements.txt` comments + README (Installing just)
-- [ ] Four-drive matrix (`devices`, `matrix.py`, `run_transfer`, `run_analysis`)
-- [ ] `specs/future-benchmarks.md` (plan only)
-
-## Then (MVP-A)
-
-- [ ] Owner drive paths + real transfer bench matrix run (owner hardware)
-- [ ] `BENCHMARKS.md` at repo root (no JSONL committed)
-
-## PHASES roadmap (not started)
+## Next (owner decision)
 
 - [ ] MVP-B: per-file hash, `dedupe_pro`, expanded compare
+- [ ] Commit/push stack — see `specs/PHASES.md` §6 open questions
+- [ ] Optional: un-ignore `docs/` in `.gitignore` if handbook should ship with commit 3
+
+## PHASES roadmap (planned)
+
 - [ ] 2a: `large_files_pro`, `tree_export_pro`
 - [ ] 2b-1 / 2b-2: `backup_check_pro`
 - [ ] 2c: `junk_cleaner_pro`
@@ -34,9 +30,9 @@ Gitignored. Align with `specs/HORIZON.md` and `specs/PHASES.md`.
 
 - `shell_history`, `config_diff`, `open_files`, `pipeline_check`, `perf_bench_pro` (product)
 - `doc_gen` (separate product)
+- `specs/future-benchmarks.md` — resume/adaptive/strategy benches (plan only)
 
 ## Hygiene
 
-- [X] Retire stale `migration_pro/` task bullets (superseded by shipped migration)
-- [ ] Optional: refresh local `docs/CONTEXT.md` from specs (`docs/` still gitignored)
-- [ ] Push to origin — single decision after MVP-A review and `BENCHMARKS.md` is interpreted
+- [X] Handbook sync: `docs/CONTEXT.md`, `ARCHITECTURE.md`, `REFACTOR.md`, `specs/PHASES.md`, `specs/HORIZON.md`, `README.md`, `benchmarks/README.md`, `benchmarks/RESULTS.md` (2026-06-04)
+- [ ] Push to origin — owner timing
