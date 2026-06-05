@@ -32,6 +32,13 @@ venv/
 # Local analysis run artifacts (never commit)
 runs/
 
+# Benchmark corpus cache and results (never commit)
+benchmarks/results/
+benchmarks/corpus/
+benchmarks/corpus/_cache/
+benchmarks/toolkit_manifest.json
+benchmarks/*.txt
+
 
 # pytest / coverage
 .pytest_cache/

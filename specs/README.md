@@ -20,6 +20,8 @@ Plain-English contracts for root `*_pro.py` tools and their `os_toolkit/` implem
 
 Workflow and agent doctrine live in `AGENTS.md` (not here).
 
+Hardware transfer baselines: [`benchmarks/RESULTS.md`](../benchmarks/RESULTS.md). Harness docs: [`benchmarks/README.md`](../benchmarks/README.md).
+
 ## Spec evolution
 
 Changing a documented guarantee requires updating the matching spec in the **same commit** as the code change.

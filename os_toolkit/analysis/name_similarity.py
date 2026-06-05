@@ -87,12 +87,9 @@ class NameSimilarity:
 
         print("[INFO] Computing sparse cosine similarity...")
         sim_sparse = cosine_similarity(tfidf1, tfidf2, dense_output=False)
-        sim_dense = sim_sparse.toarray()
-
         if mask is not None:
-            sim_dense = np.where(mask, sim_dense, 0.0)
-
-        return sim_dense.astype(np.float16)
+            sim_sparse = sim_sparse.multiply(mask.astype(np.float32))
+        return sim_sparse.tocsr().astype(np.float32)
 
     def _bert_matrix(self, names1, names2, mask):
         from sklearn.metrics.pairwise import cosine_similarity

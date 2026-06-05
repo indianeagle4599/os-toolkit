@@ -14,12 +14,16 @@ SOURCE = ""  # source directory path
 DEST = ""  # destination directory path
 
 # Transfer behaviour
-STRATEGY = "balanced"  # "smallest-first" | "largest-first" | "balanced"
 WORKERS = (
-    None  # None → CPU count // 2 (auto-detect); also used as ceiling for --adaptive
+    None  # None → CPU count // 2 (auto-detect)
 )
+HDD_MAX_WORKERS = 1
+UNKNOWN_MEDIA_MAX_WORKERS = 2
+HDD_FILE_COUNT_THRESHOLD = 50_000
+# Set to 1 to enable robocopy backend on Windows HDD + large trees.
+# Requires robocopy on PATH. Never enabled by default.
+USE_ROBOCOPY_BACKEND = False  # overridden by OS_TOOLKIT_ROBOCOPY=1 env var
 DRY_RUN = False  # True = simulate without copying any files
-ADAPTIVE = True  # True = auto-tune worker count via timer-driven probing
 
 # Output
 # 0 = quiet (bar + summary only)

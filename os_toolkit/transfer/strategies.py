@@ -1,5 +1,10 @@
 """
 strategies — prescan, ordering, and adaptive probe helpers.
+
+NOTE: prescan_source and apply_strategy are NOT used by the production copy path.
+They exist only as test infrastructure.
+effective_workers-related functions (probe_sequence, choose_optimal) are fully dead.
+Candidate for cleanup in a future pass.
 """
 
 import os
@@ -12,10 +17,12 @@ FileEntry = Tuple[str, str, int]
 
 def prescan_source(source_dir: str) -> List[FileEntry]:
     files = []
+    source_root = os.path.abspath(source_dir)
     for root, _, filenames in os.walk(source_dir):
         for filename in filenames:
-            full_path = extended_path(os.path.join(root, filename))
-            rel = os.path.relpath(full_path, extended_path(source_dir))
+            plain_path = os.path.join(root, filename)
+            full_path = extended_path(plain_path)
+            rel = os.path.relpath(plain_path, source_root)
             try:
                 size = os.path.getsize(full_path)
             except OSError:

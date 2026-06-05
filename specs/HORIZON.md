@@ -44,6 +44,7 @@ This document locks the long-term product direction so scope decisions have a wr
 | `paths.py` | `extended_path`, `rel_path`, `path_parts` | Windows long paths; relative path keys; path segment tuples |
 | `format.py` | `human_readable_size`, `format_eta` | Operator-facing size and ETA strings |
 | `config.py` | `cfg_get` | Optional `*_config.py` defaults; CLI wins |
+| `storage.py` | `rotational_for_path`, `default_transfer_workers` | Disk media detection; worker caps for SSD vs HDD copy |
 
 ### 3B — Planned primitives (enter when a **second** tool needs the same helper)
 
@@ -71,17 +72,18 @@ Status: `shipped` | `in-progress` | `planned` | `speculative`.
 
 | Tool | Domain | Status | Purpose | Primitives |
 |------|--------|--------|---------|------------|
-| `file_transfer_pro` | `transfer/` | shipped | Parallel directory copy with resume, strategies, optional adaptive workers | `core.paths`, `core.format`, `core.config`; introduces transfer copy/worker/strategies |
+| `file_transfer_pro` | `transfer/` | shipped | Disk-aware parallel copy (`ssd_copy` / `hdd_copy`), resume, robocopy backend, byte progress | `core.paths`, `core.format`, `core.config`, `core.storage`; `transfer.copy`, `worker`, `strategies`, `robocopy` |
 | `disk_analyzer_pro` | `analysis/` | shipped | Depth-limited usage tree for one root | `core.config`; `analysis.usage` |
 | `smart_zip_pro` | `transfer/` | shipped | Folder-level zip recommendations; optional create | `core.config`, `core.format`, `core.paths`; `transfer.archive_*` |
 | `analyze_pro` | `analysis/` | shipped | Subcommands: `usage`, `compare` (profiles internally) | `analysis.usage`, `profile`, `compare`, `runs`; compare uses optional ML stack |
+| Four-drive benchmark matrix | `benchmarks/` | shipped | Multi-drive transfer/analysis measurement, `run_tool` isolation, orchestrator + MAD aggregation | `benchmarks.devices`, `matrix`, `orchestrator`, `aggregate`, `outliers` |
+| justfile + dependency docs | repo root | shipped | Single operator catalog for test/bench/CLI | None in `os_toolkit/` |
+| Published transfer baselines | `benchmarks/` | shipped | Owner 1G hardware summaries in `benchmarks/RESULTS.md` | Harness JSONL under `benchmarks/results/` (gitignored) |
 
 ### B. In-progress (current planning / execution round)
 
 | Item | Domain | Status | Purpose | Primitives |
 |------|--------|--------|---------|------------|
-| Four-drive benchmark matrix | `benchmarks/` | in-progress | Multi-drive transfer/analysis measurement with physical-device tagging | Extends `benchmarks.devices`, new `benchmarks.matrix` |
-| justfile + dependency docs | repo root | in-progress | Single operator catalog for test/bench/CLI | None in `os_toolkit/` |
 | `specs/future-benchmarks.md` | `specs/` | in-progress | Plan resume/adaptive/strategy benches (no implementation this round) | N/A |
 
 ### C. Planned — Tier 1 (MVP-B: analysis depth)
