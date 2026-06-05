@@ -4,10 +4,10 @@ resume/dry-run, optional config defaults, and adaptive worker tuning.
 """
 
 import argparse
-import multiprocessing
 import sys
 
 from os_toolkit.core.config import cfg_get
+from os_toolkit.core.storage import default_transfer_workers
 from os_toolkit.transfer.copy import parallel_copy
 
 try:
@@ -22,10 +22,11 @@ def main():
             "Superfast File Transfer Pro | Pre-scan | Strategy | Live Progress | Resume"
         )
 
-    workers_default = cfg_get(_cfg, "WORKERS", multiprocessing.cpu_count() // 2)
+    workers_default = cfg_get(_cfg, "WORKERS", default_transfer_workers())
+    hdd_file_count_threshold = cfg_get(_cfg, "HDD_FILE_COUNT_THRESHOLD", 50_000)
 
     parser = argparse.ArgumentParser(
-        description="Parallel directory copy with pre-scan, resume, and optional adaptive workers.",
+        description="Parallel directory copy with resume and HDD/SSD paths.",
         epilog="Optional file_transfer_config.py sets defaults (SOURCE, DEST, …); CLI wins.",
     )
     parser.add_argument(
@@ -61,18 +62,6 @@ def main():
         default=cfg_get(_cfg, "DRY_RUN", False),
         help="Simulate without copying files",
     )
-    parser.add_argument(
-        "--strategy",
-        choices=["smallest-first", "largest-first", "balanced"],
-        default=cfg_get(_cfg, "STRATEGY", "balanced"),
-        help="File scheduling strategy (default: balanced)",
-    )
-    parser.add_argument(
-        "--adaptive",
-        action="store_true",
-        default=cfg_get(_cfg, "ADAPTIVE", False),
-        help="Auto-tune worker count via timer-driven probing (default: off)",
-    )
 
     args = parser.parse_args()
 
@@ -87,8 +76,7 @@ def main():
         workers=args.workers,
         verbosity=args.verbosity,
         dry_run=args.dry_run,
-        strategy=args.strategy,
-        adaptive=args.adaptive,
+        hdd_file_count_threshold=hdd_file_count_threshold,
     ):
         sys.exit(1)
 

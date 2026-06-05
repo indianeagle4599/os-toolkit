@@ -74,13 +74,9 @@ class Stat:
     rel: str
     bytes: int = 0
     files: int = 0
-    folders: int = 0
     direct_dirs: int = 0
-    max_depth: int = 0
     small: int = 0
     compressed: int = 0
-    symlinks: int = 0
-    errors: list = field(default_factory=list)
     exts: Counter = field(default_factory=Counter)
     children: list = field(default_factory=list)
 
@@ -192,15 +188,11 @@ def add_file(stat, filename, size, cfg):
 def merge(parent, child):
     parent.children.append(child.path)
     parent.direct_dirs += 1
-    parent.folders += child.folders + 1
     parent.files += child.files
     parent.bytes += child.bytes
     parent.small += child.small
     parent.compressed += child.compressed
-    parent.symlinks += child.symlinks
-    parent.errors.extend(child.errors[: max(0, 5 - len(parent.errors))])
     parent.exts.update(child.exts)
-    parent.max_depth = max(parent.max_depth, child.max_depth + 1)
 
 
 def scan_tree(path, root, cfg):
@@ -219,20 +211,17 @@ def scan_tree(path, root, cfg):
                     for entry in entries:
                         child = os.path.join(current, entry.name)
                         try:
-                            if entry.is_symlink():
-                                stat.symlinks += 1
-                            elif entry.is_file(follow_symlinks=False):
+                            if entry.is_file(follow_symlinks=False):
                                 size = entry.stat(follow_symlinks=False).st_size
                                 add_file(stat, entry.name, size, cfg)
                             elif entry.is_dir(follow_symlinks=False):
                                 if entry.name.lower() in cfg["exclude_names"]:
                                     continue
                                 child_dirs.append(child)
-                        except OSError as error:
-                            if len(stat.errors) < 5:
-                                stat.errors.append(f"{child}: {error}")
-            except OSError as error:
-                stat.errors.append(f"{current}: {error}")
+                        except OSError:
+                            pass
+            except OSError:
+                pass
             if cfg["verbosity"] >= 2:
                 print(f"  scan: {stat.rel or '.'}")
             pending_children[current] = child_dirs
@@ -263,16 +252,14 @@ def scan_root(cfg):
         with os.scandir(extended_path(root)) as entries:
             for entry in entries:
                 path = os.path.join(root, entry.name)
-                if entry.is_symlink():
-                    root_stat.symlinks += 1
-                elif entry.is_file(follow_symlinks=False):
+                if entry.is_file(follow_symlinks=False):
                     size = entry.stat(follow_symlinks=False).st_size
                     add_file(root_stat, entry.name, size, cfg)
                 elif entry.is_dir(follow_symlinks=False):
                     if entry.name.lower() not in cfg["exclude_names"]:
                         top_dirs.append(path)
-    except OSError as error:
-        root_stat.errors.append(f"{root}: {error}")
+    except OSError:
+        pass
 
     use_pool = cfg["workers"] > 1 and len(top_dirs) > 1
     if use_pool and cfg["verbosity"]:
