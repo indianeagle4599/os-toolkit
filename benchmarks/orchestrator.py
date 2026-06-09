@@ -24,6 +24,7 @@ from benchmarks.aggregate import (
 from benchmarks.corpus import RESULTS_DIR, warn_unavailable_datasets
 from benchmarks.matrix import add_drive_args
 from benchmarks import run_analysis, run_transfer, run_zip
+from benchmarks.report import write_suite_report
 
 SUITES = ("transfer", "analysis", "zip")
 
@@ -75,6 +76,14 @@ def run_suite_loop(args) -> Path:
     write_aggregate(agg_path, payload)
     print(f"[{args.suite}] aggregate: {agg_path}", flush=True)
     print_summary_table(payload)
+    if args.write_report:
+        out = write_suite_report(args.suite, agg_path, args, results_dir)
+        if out:
+            label = args.report_label or results_dir.name
+            print(
+                f"[{args.suite}] report bench:{label} -> {out}",
+                flush=True,
+            )
     return agg_path
 
 
@@ -99,12 +108,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--media-filter",
         default="ssd",
         choices=["all", "ssd", "hdd"],
-        help="Transfer only: filter scenarios by media type",
+        help="Filter scenarios by drive media (transfer + analysis)",
     )
     parser.add_argument("--shuffle-tools", action="store_true")
     parser.add_argument("--tool-seed", type=int, default=None)
     parser.add_argument("--max-runs", type=int, default=10)
     parser.add_argument("--min-valid", type=int, default=3)
+    parser.add_argument(
+        "--write-report",
+        action="store_true",
+        help="After aggregate, patch benchmarks/RESULTS.md (supported suites only)",
+    )
+    parser.add_argument(
+        "--report-label",
+        default="",
+        help="RESULTS.md section marker id (default: results-dir basename)",
+    )
+    parser.add_argument(
+        "--corpus-note",
+        default="",
+        help="Optional corpus footnote for generated report section",
+    )
+    parser.add_argument(
+        "--no-stage",
+        action="store_true",
+        help="Analysis only: scan --corpus in place (skip copy to drive scratch)",
+    )
     return parser
 
 

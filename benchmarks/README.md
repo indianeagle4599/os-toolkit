@@ -49,6 +49,20 @@ just bench-multi transfer `
 
 Repeat with `1G/tiny-heavy` and `1G/media-heavy` (swap `--profile`, `--corpus`, and `--results-dir`). Omit `--drive-*` only for synthetic smoke — not for hardware baselines.
 
+**Disk usage (analysis) — multi-run + report:**
+
+```powershell
+just bench-multi analysis `
+  --drive-a C:\bench --drive-b D:\bench `
+  --profile small/mixed --corpus benchmarks/corpus/small/mixed `
+  --scenarios all --media-filter ssd `
+  --results-dir benchmarks/results/small-mixed-ssd `
+  --write-report --report-label small-mixed-ssd `
+  --corpus-note "~2.0 GB, ~108K files"
+```
+
+Stages corpus to each drive scratch tree, compares `os_toolkit.usage` (scandir + usage tree) vs `os.walk` / bare `scandir` size sums. Writes `analysis_aggregate.json` and patches **`RESULTS.md`** when `--write-report` is set. Re-render: `just bench-report benchmarks/results/<dir>/analysis_aggregate.json --label <id>` (suite inferred from filename).
+
 ## Hardware
 
 Record `device_src` / `device_dst` from `benchmarks/devices.py` labels (`mount`, `rotational`, `physical_id`). Not comparable across machines unless `corpus_signature` matches.
@@ -97,7 +111,7 @@ Use `just bench-quick` for a fast SSD cross-matrix smoke before a full hardware 
 
 Committed summary tables: **[RESULTS.md](RESULTS.md)** (scenario-level detail, methodology, reproduce warnings).
 
-Raw aggregates: `benchmarks/results/<label>/transfer_aggregate.json` (gitignored). Update `RESULTS.md` when new orchestrator runs complete.
+Raw aggregates: `benchmarks/results/<label>/{analysis,transfer,zip}_aggregate.json` (gitignored). Update `RESULTS.md` when new orchestrator runs complete (`--write-report` for analysis).
 
 ## Reproduce on your hardware
 

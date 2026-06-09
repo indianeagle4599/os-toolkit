@@ -6,6 +6,28 @@
 `os-toolkit` is a Python-first OS utility repo for file system operations that need more **control**, **safety**, and **operational clarity** than ad-hoc shell commands.
 It is a practical layer between raw `os`/`shutil` and a future agent-native ops toolkit.
 
+## Disk usage performance
+
+**Runtime:** **0.30 s** median to scan **~2.0 GB** (~108K files) on SSD and emit a usage tree — **11× faster** than `os.walk` sizing (3.31 s), **+8%** vs bare `scandir` total-only (0.28 s).
+
+| Tool | Runtime | Output |
+|------|---------|--------|
+| **os_toolkit.usage** (ours) | **0.30 s** | size + % tree |
+| stdlib.os.walk + sum | 3.31 s | byte total only |
+| stdlib.scandir + sum | 0.28 s | byte total only |
+
+Example (`analyze_pro usage`, same corpus, depth 2):
+
+```
+`- mixed ................................................   2.0 GB (100.0%)
+    |- linux_kernel_src_extracted .......................   1.3 GB ( 63.0%)
+    |- coco2017_val_subset_extracted .................... 676.5 MB ( 33.0%)
+
+Analysis completed in 0.26 seconds
+```
+
+Detail: [benchmarks/RESULTS.md](benchmarks/RESULTS.md#disk-usage-analysis)
+
 ## Transfer performance (1G copy benchmarks)
 
 Hardware copy benchmarks on ~1 GB corpora (Windows, SSD/HDD matrix). **Our tool:** `os_toolkit.transfer` via `file_transfer_pro.py`. Compared to `stdlib.copytree` and `robocopy`. Medians from multi-run orchestrator (≥3 valid runs, MAD outliers removed).
@@ -19,7 +41,7 @@ Hardware copy benchmarks on ~1 GB corpora (Windows, SSD/HDD matrix). **Our tool:
 | `1G/media-heavy` | SSD | **~1.8 s**, **~553 MB/s** | ~1.4× | ~1.5× |
 | `1G/media-heavy` | HDD† | **~3–11 s**, **~93–405 MB/s** | ~1.0–1.4× | ~1.0–1.3× |
 
-†HDD row: five scenarios touching `E:` (HDD); not comparable to SSD-only row. Detail: [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
+†HDD row: five scenarios touching `E:` (HDD); not comparable to SSD-only row. Detail: [benchmarks/RESULTS.md § Transfer](benchmarks/RESULTS.md#transfer-copy).
 
 SSD `1G/balanced`: four scenarios (`a_to_a`, `a_to_b`, `b_to_a`, `b_to_b` on C:/D: SSDs). Median-of-scenario-medians; same `corpus_signature` required to compare elsewhere.
 

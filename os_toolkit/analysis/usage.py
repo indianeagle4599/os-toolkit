@@ -2,6 +2,8 @@
 usage — disk usage tree analysis (single-root).
 """
 
+import contextlib
+import io
 import os
 import time
 from typing import Dict, Optional
@@ -190,6 +192,21 @@ def add_usage_arguments(
     parser.add_argument(
         "-s", "--shallow-scan", action="store_true", default=shallow_scan
     )
+
+
+def bench_usage_scan(
+    path: str,
+    max_depth: int = 5,
+    threshold: float = 0.0,
+    shallow_scan: bool = False,
+) -> bool:
+    """Benchmark path: scandir walk + usage tree reconcile; stdout suppressed."""
+    scan_data = scan_directory(path, max_depth, 0, 0, shallow_scan)
+    if not scan_data:
+        return False
+    with contextlib.redirect_stdout(io.StringIO()):
+        print_results(scan_data, threshold, max_depth)
+    return True
 
 
 def run_usage(

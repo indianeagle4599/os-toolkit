@@ -1,4 +1,76 @@
-# Transfer benchmark results (hardware)
+# os-toolkit benchmark results
+
+## Disk usage (analysis)
+
+Disk usage benchmarks for **`os_toolkit.usage`** (`analyze_pro usage` / `disk_analyzer_pro`) vs stdlib sizing baselines on a real mixed corpus.
+
+| Item | Value |
+|------|--------|
+| Runner | `just bench-multi analysis` → `benchmarks/orchestrator.py` |
+| Corpus | `small/mixed` — **~2.0 GB**, **~108K files** |
+| Runs per (tool, scenario) | ≥3 valid after MAD outlier filter (threshold 3.5); up to 10 attempts |
+| Metric | Median `wall_time_sec` from `analysis_aggregate.json` |
+| What we time | **Ours:** `scandir` walk + usage tree (size, % of root). **Baselines:** byte total only via `os.walk` or recursive `scandir` |
+| Scenarios | One within-drive scan per `--drive-*` (`a_scan`, `b_scan`, …); corpus staged to each drive scratch tree |
+
+<!-- bench:small-mixed-ssd -->
+### Disk usage · `small/mixed` · small-mixed-ssd
+
+**Status:** **complete** (4 orchestrator runs; `pairs_satisfied: True`).
+**Corpus signature:** `a20b0127…` — ~2.0 GB, ~108K files
+
+**Tools:** `os_toolkit.usage` (`scandir` + usage tree) vs `os.walk` / recursive `scandir` size sums only.
+
+Command:
+
+```powershell
+just bench-multi analysis --drive-a C:\bench --drive-b D:\bench --profile small/mixed --corpus benchmarks/corpus/small/mixed --scenarios all --media-filter ssd --results-dir benchmarks/results/small-mixed-ssd --write-report --report-label small-mixed-ssd --corpus-note "~2.0 GB, ~108K files"
+```
+
+#### Rollup (median across scenarios)
+
+| Tool | Median wall | Median throughput | Output |
+|------|-------------|-------------------|--------|
+| **os_toolkit.usage** (ours) | **~0.299 s** | **~6.7 GB/s** | usage tree |
+| stdlib.os.walk | ~3.31 s | ~649 MB/s | size total only |
+| stdlib.scandir | ~0.277 s | ~7.3 GB/s | size total only |
+
+**vs `os.walk`:** ~**11.1×** faster (~0.299 s vs ~3.31 s).
+**vs bare `scandir` sum:** ~**8%** slower (~0.299 s vs ~0.277 s) — full usage tree vs byte total only.
+
+#### Scenario detail
+
+| Scenario | Tool | Median wall | Median throughput | Valid runs |
+|----------|------|-------------|-------------------|------------|
+| `a_scan` | **os_toolkit.usage** | ~0.275 s | ~7.3 GB/s | 3/4 |
+| `a_scan` | stdlib.os.walk | ~2.60 s | ~789 MB/s | 3/4 |
+| `a_scan` | stdlib.scandir | ~0.253 s | ~7.9 GB/s | 3/4 |
+| `b_scan` | **os_toolkit.usage** | ~0.324 s | ~6.2 GB/s | 4/4 |
+| `b_scan` | stdlib.os.walk | ~4.03 s | ~509 MB/s | 4/4 |
+| `b_scan` | stdlib.scandir | ~0.300 s | ~6.7 GB/s | 3/4 |
+<!-- /bench:small-mixed-ssd -->
+### Example output (`analyze_pro usage`)
+
+Same corpus (`small/mixed`), depth 2, 2% threshold (truncated display; benchmark uses max_depth 5, threshold 0):
+
+```
+Analyzing: benchmarks/corpus/small/mixed
+
+Storage Analysis Results:
+`- mixed ...............................................................................   2.0 GB (100.0%)
+    |- linux_kernel_src_extracted ......................................................   1.3 GB ( 63.0%)
+    |   `- linux-6.6.1 .................................................................   1.3 GB ( 63.0%)
+    |- coco2017_val_subset_extracted ................................................... 676.5 MB ( 33.0%)
+    |   `- val2017 ..................................................................... 676.5 MB ( 33.0%)
+
+Analysis completed in 0.26 seconds
+```
+
+Command: `python analyze_pro.py usage -p benchmarks/corpus/small/mixed -d 2 -t 2 -v 0`
+
+---
+
+## Transfer (copy)
 
 Owner-machine copy benchmarks for **`os_toolkit.transfer`** (ours) vs **`stdlib.copytree`** and **`robocopy`**. Raw JSONL and aggregates live under `benchmarks/results/` (gitignored); this file is the committed summary.
 
@@ -272,22 +344,23 @@ just bench-multi transfer --drive-a C:\bench --drive-b D:\bench --drive-c E:\ben
 
 ## Run health
 
-| Results dir | Aggregate | JSONL rows/run | Failures | Verdict |
-|-------------|-----------|----------------|----------|---------|
-| `ssd-1g-balanced/` | `pairs_satisfied: true` | 12 | 0 | **Good** |
-| `hdd-1g-balanced/` | `pairs_satisfied: true` | 15 | 0 | **Good** |
-| `ssd-1g-tiny-heavy/` | `pairs_satisfied: true` | 12 | 0 | **Good** |
-| `hdd-1g-tiny-heavy/` | `pairs_satisfied: true` | 15 | 0 | **Good** |
-| `ssd-1g-media-heavy/` | `pairs_satisfied: true` | 12 | 0 | **Good** |
-| `hdd-1g-media-heavy/` | `pairs_satisfied: true` | 15 | 0 | **Good** |
+| Results dir | Suite | Aggregate | Runs | Failures | Verdict |
+|-------------|-------|-----------|------|----------|---------|
+| `small-mixed-ssd/` | analysis | `pairs_satisfied: true` | 4 | 0 | **Good** |
+| `ssd-1g-balanced/` | transfer | `pairs_satisfied: true` | 4 | 0 | **Good** |
+| `hdd-1g-balanced/` | transfer | `pairs_satisfied: true` | 5 | 0 | **Good** |
+| `ssd-1g-tiny-heavy/` | transfer | `pairs_satisfied: true` | 4 | 0 | **Good** |
+| `hdd-1g-tiny-heavy/` | transfer | `pairs_satisfied: true` | 5 | 0 | **Good** |
+| `ssd-1g-media-heavy/` | transfer | `pairs_satisfied: true` | 4 | 0 | **Good** |
+| `hdd-1g-media-heavy/` | transfer | `pairs_satisfied: true` | 5 | 0 | **Good** |
 
-All six suites: `pairs_satisfied: true`, no failed rows.
+All published suites: `pairs_satisfied: true`, no failed rows.
 
 ---
 
 ## Status
 
-**6/6 suites complete** (2026-06-05). Ready for docs commit.
+**7/7 suites complete** — 1 analysis (`small-mixed-ssd`) + 6 transfer (1G matrix). Last updated 2026-06-09.
 
 ---
 

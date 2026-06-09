@@ -147,6 +147,11 @@ def write_aggregate(path: Path, payload: dict) -> None:
         f.write("\n")
 
 
+def load_aggregate(path: Path) -> dict:
+    """Read an aggregate JSON file written by write_aggregate."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def print_summary_table(payload: dict) -> None:
     print(f"pairs_satisfied={payload.get('pairs_satisfied')}")
     for row in payload.get("summaries", []):
@@ -188,9 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: List[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     paths = [Path(p) for p in args.jsonl_paths]
-    payload = build_aggregate(
-        paths, min_valid=args.min_valid, threshold=args.threshold
-    )
+    payload = build_aggregate(paths, min_valid=args.min_valid, threshold=args.threshold)
     out = (
         Path(args.output)
         if args.output

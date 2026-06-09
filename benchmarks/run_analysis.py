@@ -2,24 +2,30 @@
 run_analysis — benchmark disk usage tools vs stdlib baselines (function calls).
 
 Feature: Operators pass 1–4 drive paths for within-drive scan measurement.
-Must do: Matrix scenarios, scratch cleanup, physical-device tags on JSONL.
+Must do: Matrix scenarios, corpus staging on drive, physical-device tags on JSONL.
 Must NOT: Auto-detect drives; run hardware benches in tests; fetch corpus.
+
+Bench params: max_depth=5, threshold=0.0 (full tree at depth 5). Production CLI
+default threshold is 1.0% — published runtimes are not default-operator timings.
 """
 
 import argparse
 import os
+import shutil
+import sys
 from pathlib import Path
 from typing import List, Optional
 
 from benchmarks.corpus import (
     RESULTS_DIR,
-    bench_bytes_per_sec,
     build_bench_record,
+    corpus_tree_bytes,
     remove_scratch_tree,
     resolve_corpus_for_bench,
     run_timed,
     track_scratch_cleanup,
     utc_timestamp,
+    validate_profile,
     warn_unavailable_datasets,
     write_jsonl_record,
 )
@@ -30,9 +36,12 @@ from benchmarks.matrix import (
     iter_analysis_scenarios,
     parse_drives,
 )
+from os_toolkit.core.storage import describe_path
 
 BENCH_ROOT = Path(__file__).resolve().parent
 ANALYSIS_TOOLS = ("os_toolkit.usage", "stdlib.os.walk", "stdlib.scandir")
+BENCH_MAX_DEPTH = 5
+BENCH_THRESHOLD = 0.0
 
 
 def walk_total_size(root: str) -> int:
@@ -65,24 +74,98 @@ def scandir_total_size(root: str) -> int:
     return total
 
 
+def _scenario_media_skip_reason(scenario, media_filter: str) -> Optional[str]:
+    """Return a skip reason, or None when the scenario matches the filter."""
+    if media_filter == "all":
+        return None
+    rot = describe_path(str(scenario.src_path))["rotational"]
+    if media_filter == "ssd":
+        if rot is False:
+            return None
+        if rot is True:
+            return "HDD drive"
+        return "unknown rotational media"
+    if media_filter == "hdd":
+        if rot is True:
+            return None
+        if rot is False:
+            return "SSD drive"
+        return "unknown rotational media"
+    raise ValueError(f"unknown media filter {media_filter!r}; use all, ssd, or hdd")
+
+
+def _stage_corpus(source: Path, dest: Path) -> Path:
+    """Copy corpus onto the scenario drive when paths differ."""
+    if source.resolve() == dest.resolve():
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        shutil.rmtree(dest)
+    try:
+        shutil.copytree(source, dest)
+    except OSError as exc:
+        raise SystemExit(f"staging corpus failed: {source} -> {dest}: {exc}") from exc
+    return dest
+
+
+def _resolve_scenario_corpus(
+    args,
+    scenario,
+    timestamp: str,
+) -> tuple[Path, str]:
+    if args.corpus:
+        source = Path(args.corpus)
+        if not source.is_dir():
+            raise SystemExit(f"corpus path not found or not a directory: {source}")
+        signature = validate_profile(str(source), "", args.ignore_manifest)
+        if args.no_stage:
+            return source, signature
+        dest = analysis_corpus_path(scenario, timestamp)
+        track_scratch_cleanup(dest.parent)
+        return _stage_corpus(source, dest), signature
+    smoke_parent = analysis_corpus_path(scenario, timestamp)
+    track_scratch_cleanup(smoke_parent.parent)
+    return resolve_corpus_for_bench(
+        args.profile,
+        "",
+        args.ignore_manifest,
+        smoke_parent,
+        synthetic_files=30,
+        synthetic_size=512,
+    )
+
+
 def bench_tool(
-    name, corpus_path: str, signature, profile, scenario_id: str, device_tags: dict
+    name,
+    corpus_path: str,
+    signature,
+    profile,
+    scenario_id: str,
+    device_tags: dict,
+    corpus_bytes: int,
 ):
-    from os_toolkit.analysis.usage import run_usage
+    from os_toolkit.analysis.usage import bench_usage_scan
 
     def _run():
         if name == "os_toolkit.usage":
-            return run_usage(corpus_path, 5, 0.0, 0, False)
+            return bench_usage_scan(
+                corpus_path,
+                max_depth=BENCH_MAX_DEPTH,
+                threshold=BENCH_THRESHOLD,
+                shallow_scan=False,
+            )
         if name == "stdlib.os.walk":
             walk_total_size(corpus_path)
             return True
         if name == "stdlib.scandir":
             scandir_total_size(corpus_path)
             return True
-        return True
+        raise ValueError(f"unknown analysis bench tool {name!r}")
 
     elapsed, exit_status = run_timed(_run)
-    bps = bench_bytes_per_sec(Path(corpus_path), elapsed, exit_status)
+    bps = 0
+    if exit_status == 0 and elapsed > 0 and corpus_bytes > 0:
+        bps = int(corpus_bytes / elapsed)
     return build_bench_record(
         tool=name,
         profile=profile,
@@ -93,6 +176,7 @@ def bench_tool(
         wall_time_sec=elapsed,
         bytes_per_sec=bps,
         exit_status=exit_status,
+        dst_bytes=corpus_bytes,
     )
 
 
@@ -110,6 +194,7 @@ def run_single(args) -> None:
             synthetic_size=512,
         )
         tags = _device_tags(Path(corpus_path))
+        corpus_bytes = corpus_tree_bytes(Path(corpus_path))
         out = (
             Path(args.output)
             if args.output
@@ -117,14 +202,21 @@ def run_single(args) -> None:
         )
         for tool in ANALYSIS_TOOLS:
             record = bench_tool(
-                tool, str(corpus_path), signature, args.profile, "synthetic", tags
+                tool,
+                str(corpus_path),
+                signature,
+                args.profile,
+                "synthetic",
+                tags,
+                corpus_bytes,
             )
             write_jsonl_record(out, record)
             print(
                 f"{record['tool']:22} {record['wall_time_sec']:7.3f}s "
-                f"{record['bytes_per_sec']:>12} B/s  exit={record['exit_status']}"
+                f"{record['bytes_per_sec']:>12} B/s  exit={record['exit_status']}",
+                flush=True,
             )
-        print(f"Results: {out}")
+        print(f"Results: {out}", flush=True)
     finally:
         remove_scratch_tree(smoke)
 
@@ -137,20 +229,26 @@ def run_matrix(args, drives: dict) -> None:
         else RESULTS_DIR / f"analysis_{timestamp}.jsonl"
     )
     for scenario in iter_analysis_scenarios(drives, args.scenarios):
-        corpus_parent = analysis_corpus_path(scenario, timestamp)
-        bench_root = corpus_parent.parent
+        skip = _scenario_media_skip_reason(scenario, args.media_filter)
+        if skip:
+            print(
+                f"Scenario {scenario.id}: skip ({skip}, "
+                f"--media-filter {args.media_filter})",
+                file=sys.stderr,
+                flush=True,
+            )
+            continue
+        bench_root = analysis_corpus_path(scenario, timestamp).parent
         track_scratch_cleanup(bench_root)
         try:
-            corpus_path, signature = resolve_corpus_for_bench(
-                args.profile,
-                args.corpus,
-                args.ignore_manifest,
-                corpus_parent,
-                synthetic_files=30,
-                synthetic_size=512,
-            )
+            corpus_path, signature = _resolve_scenario_corpus(args, scenario, timestamp)
             tags = _device_tags(corpus_path)
-            print(f"Scenario {scenario.id}: scan {corpus_path}")
+            corpus_bytes = corpus_tree_bytes(corpus_path)
+            print(
+                f"Scenario {scenario.id}: scan {corpus_path} "
+                f"({corpus_bytes / (1024**2):.1f} MB)",
+                flush=True,
+            )
             for tool in ANALYSIS_TOOLS:
                 record = bench_tool(
                     tool,
@@ -159,16 +257,18 @@ def run_matrix(args, drives: dict) -> None:
                     args.profile,
                     scenario.id,
                     tags,
+                    corpus_bytes,
                 )
                 write_jsonl_record(out, record)
                 print(
                     f"  {record['tool']:20} {record['wall_time_sec']:7.3f}s "
                     f"{record['bytes_per_sec']:>12} B/s  "
-                    f"same_phys={record['same_physical_device']}"
+                    f"same_phys={record['same_physical_device']}",
+                    flush=True,
                 )
         finally:
             remove_scratch_tree(bench_root)
-    print(f"Results: {out}")
+    print(f"Results: {out}", flush=True)
 
 
 def build_parser():
@@ -179,6 +279,17 @@ def build_parser():
     parser.add_argument("--ignore-manifest", action="store_true")
     parser.add_argument(
         "--scenarios", default="all", help="all | within (analysis: N scans only)"
+    )
+    parser.add_argument(
+        "--media-filter",
+        default="ssd",
+        choices=["all", "ssd", "hdd"],
+        help="Skip scenarios whose scan drive is not SSD/HDD/all",
+    )
+    parser.add_argument(
+        "--no-stage",
+        action="store_true",
+        help="Scan --corpus in place (no copy to --drive-* scratch)",
     )
     add_drive_args(parser)
     return parser

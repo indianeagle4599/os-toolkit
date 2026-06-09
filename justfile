@@ -27,6 +27,10 @@ bench-multi target *ARGS:
 bench-aggregate *ARGS:
     python -m benchmarks.aggregate {{ARGS}}
 
+# Render RESULTS.md section from aggregate JSON (--suite inferred from filename).
+bench-report AGGREGATE *ARGS:
+    python -m benchmarks.report {{AGGREGATE}} {{ARGS}}
+
 # Download benchmark corpus archives.
 bench-fetch:
     python -m benchmarks.fetch_corpus
